@@ -19,7 +19,7 @@ func Init() error {
 	opts := []bot.Option{
 		bot.WithDefaultHandler(defaultHandler),
 	}
-	b, err := bot.New(os.Getenv(conf.Conf.TelegramBotToken), opts...)
+	b, err := bot.New(conf.Conf.TelegramBotToken, opts...)
 	if nil != err {
 		return err
 	}
