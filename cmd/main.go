@@ -19,3 +19,8 @@ func NewApp() *app.App {
 	})
 	return app
 }
+
+func main() {
+	app := NewApp()
+	app.Run()
+}
