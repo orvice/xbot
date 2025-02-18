@@ -37,7 +37,7 @@ func Init() error {
 func SavePromt(ctx context.Context, promt Promt) error {
 	now := time.Now().Unix()
 	// get
-	pmt, err := GetPromt(ctx, promt.ChatID)
+	_, err := GetPromt(ctx, promt.ChatID)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			promt.CreatedAt = now

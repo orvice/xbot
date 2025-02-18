@@ -5,9 +5,9 @@ import (
 	"os"
 	"os/signal"
 
+	"butterfly.orx.me/core/log"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
-	"go.klook.io/comm/log"
 	"go.orx.me/xbot/internal/conf"
 	"go.orx.me/xbot/internal/pkg/openai"
 )
@@ -25,6 +25,7 @@ func Init() error {
 	}
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/hello", bot.MatchTypeExact, helloHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/gpt", bot.MatchTypeExact, gptHandler)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "gpt", bot.MatchTypeExact, gptHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/save_prompt", bot.MatchTypeExact, savePromt)
 	go b.Start(ctx)
 	return nil
