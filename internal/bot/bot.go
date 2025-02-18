@@ -59,10 +59,18 @@ func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		})
 		return
 	}
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	sendResp, err := b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
 		Text:   resp,
 	})
+	if nil != err {
+		logger.Error("SendMessage error ",
+			"error", err)
+		return
+	}
+	logger.Info("SendMessage",
+		"text", sendResp,
+	)
 }
 
 func savePromt(ctx context.Context, b *bot.Bot, update *models.Update) {
