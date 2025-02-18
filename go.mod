@@ -6,6 +6,8 @@ require (
 	butterfly.orx.me/core v0.0.0-20250130070915-56b92cf89b83
 	github.com/gin-gonic/gin v1.10.0
 	github.com/go-sql-driver/mysql v1.9.0
+	github.com/go-telegram/bot v1.14.0
+	github.com/sashabaranov/go-openai v1.37.0
 )
 
 require (
