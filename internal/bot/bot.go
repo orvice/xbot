@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
+	"go.klook.io/comm/log"
 	"go.orx.me/xbot/internal/conf"
 	"go.orx.me/xbot/internal/pkg/openai"
 )
@@ -24,6 +25,7 @@ func Init() error {
 	}
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/hello", bot.MatchTypeExact, helloHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/gpt", bot.MatchTypeExact, gptHandler)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/save_prompt", bot.MatchTypeExact, savePromt)
 	go b.Start(ctx)
 	return nil
 }
@@ -44,6 +46,10 @@ func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 }
 
 func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	logger := log.FromContext(ctx)
+	logger.Info("gptHandler",
+		"text", update.Message.Text,
+	)
 	resp, err := openai.ChatCompletion(ctx, update.Message.Text)
 	if nil != err {
 		b.SendMessage(ctx, &bot.SendMessageParams{
@@ -56,4 +62,11 @@ func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		ChatID: update.Message.Chat.ID,
 		Text:   resp,
 	})
+}
+
+func savePromt(ctx context.Context, b *bot.Bot, update *models.Update) {
+	logger := log.FromContext(ctx)
+	logger.Info("savePromt",
+		"text", update.Message.Text,
+	)
 }

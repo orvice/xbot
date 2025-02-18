@@ -8,6 +8,7 @@ require (
 	github.com/go-sql-driver/mysql v1.9.0
 	github.com/go-telegram/bot v1.14.0
 	github.com/sashabaranov/go-openai v1.37.0
+	go.mongodb.org/mongo-driver/v2 v2.0.0
 )
 
 require (
@@ -66,7 +67,6 @@ require (
 	github.com/xdg-go/scram v1.1.2 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
-	go.mongodb.org/mongo-driver/v2 v2.0.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin v0.55.0 // indirect
 	go.opentelemetry.io/otel v1.30.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.30.0 // indirect
