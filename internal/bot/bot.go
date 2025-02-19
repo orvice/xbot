@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"time"
 
 	"butterfly.orx.me/core/log"
 	"github.com/go-telegram/bot"
@@ -108,6 +109,8 @@ func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		"message", message,
 	)
 
+	start := time.Now()
+
 	resp, err := openai.ChatCompletion(ctx, prompt.Promt, message)
 	if nil != err {
 		b.SendMessage(ctx, &bot.SendMessageParams{
@@ -116,9 +119,24 @@ func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		})
 		return
 	}
+
+	duration := time.Since(start)
+	logger.Info("ChatCompletion",
+		"duration", duration,
+		"resp", resp,
+	)
+
+	resp = fmt.Sprintf("Model: %s Duration:* %s\n\n%s", conf.Conf.OpenAI.Model, duration, resp)
+
 	sendResp, err := b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
 		Text:   resp,
+		ReplyParameters: &models.ReplyParameters{
+			ChatID:                   update.Message.Chat.ID,
+			MessageID:                update.Message.ID,
+			AllowSendingWithoutReply: true,
+			Quote:                    update.Message.Text,
+		},
 	})
 	if nil != err {
 		logger.Error("SendMessage error ",
