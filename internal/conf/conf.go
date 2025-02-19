@@ -9,6 +9,8 @@ type OpenAI struct {
 type Config struct {
 	TelegramBotToken string `yaml:"telegramBotToken"`
 
+	Host string `yaml:"host"`
+
 	DBName string `yaml:"dbName"`
 	OpenAI OpenAI `yaml:"openAI"`
 }

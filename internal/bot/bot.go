@@ -2,6 +2,7 @@ package bot
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 
@@ -10,6 +11,10 @@ import (
 	"github.com/go-telegram/bot/models"
 	"go.orx.me/xbot/internal/conf"
 	"go.orx.me/xbot/internal/pkg/openai"
+)
+
+var (
+	defaultBot *bot.Bot
 )
 
 func Init() error {
@@ -23,12 +28,21 @@ func Init() error {
 	if nil != err {
 		return err
 	}
+
+	defaultBot = b
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/hello", bot.MatchTypeExact, helloHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/gpt", bot.MatchTypeExact, gptHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "gpt", bot.MatchTypeExact, gptHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/save_prompt", bot.MatchTypeExact, savePromt)
-	go b.Start(ctx)
+
+	b.SetWebhook(ctx, &bot.SetWebhookParams{
+		URL: fmt.Sprintf("%s/v1/webhook", conf.Conf.Host),
+	})
 	return nil
+}
+
+func GetBot() *bot.Bot {
+	return defaultBot
 }
 
 func helloHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
