@@ -32,8 +32,8 @@ func Init() error {
 
 	defaultBot = b
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/hello", bot.MatchTypeExact, helloHandler)
-	b.RegisterHandler(bot.HandlerTypeMessageText, "/gpt", bot.MatchTypeExact, gptHandler)
-	b.RegisterHandler(bot.HandlerTypeMessageText, "gpt", bot.MatchTypeExact, gptHandler)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/gpt", bot.MatchTypePrefix, gptHandler)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "gpt", bot.MatchTypePrefix, gptHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/save_prompt", bot.MatchTypeExact, savePromt)
 
 	resp, err := b.SetWebhook(ctx, &bot.SetWebhookParams{
@@ -52,11 +52,19 @@ func GetBot() *bot.Bot {
 }
 
 func helloHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	logger := log.FromContext(ctx)
+	logger.Info("helloHandler",
+		"update", update,
+	)
+	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
 		Text:      "Hello, *" + bot.EscapeMarkdown(update.Message.From.FirstName) + "*",
 		ParseMode: models.ParseModeMarkdown,
 	})
+	if nil != err {
+		logger.Error("SendMessage error ",
+			"error", err)
+	}
 }
 
 func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
@@ -64,10 +72,14 @@ func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	logger.Info("defaultHandler",
 		"update", update,
 	)
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
 		Text:   "Say /hello",
 	})
+	if nil != err {
+		logger.Error("SendMessage error ",
+			"error", err)
+	}
 }
 
 func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
