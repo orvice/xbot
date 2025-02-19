@@ -146,6 +146,33 @@ func savePromt(ctx context.Context, b *bot.Bot, update *models.Update) {
 	logger.Info("savePromt",
 		"text", update.Message.Text,
 	)
+
+	promt := update.Message.Text
+	if strings.HasPrefix(promt, "/save_prompt ") {
+		promt = strings.TrimPrefix(promt, "/save_prompt ")
+	}
+
+	err := dao.SavePromt(ctx, dao.Promt{
+		ChatID:    update.Message.Chat.ID,
+		Promt:     promt,
+		CreatedAt: time.Now().Unix(),
+	})
+	if nil != err {
+		logger.Error("SavePromt error ",
+			"error", err)
+		return
+	}
+
+	// send message
+	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: update.Message.Chat.ID,
+		Text:   "Prompt saved",
+	})
+	if nil != err {
+		logger.Error("SendMessage error ",
+			"error", err)
+		return
+	}
 }
 
 func huahuaHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
