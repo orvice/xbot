@@ -37,6 +37,7 @@ func Init() error {
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/hello", bot.MatchTypePrefix, helloHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/gpt", bot.MatchTypePrefix, gptHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "gpt", bot.MatchTypePrefix, gptHandler)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/huahua", bot.MatchTypePrefix, huahuaHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/save_prompt", bot.MatchTypePrefix, savePromt)
 
 	resp, err := b.SetWebhook(ctx, &bot.SetWebhookParams{
@@ -145,4 +146,56 @@ func savePromt(ctx context.Context, b *bot.Bot, update *models.Update) {
 	logger.Info("savePromt",
 		"text", update.Message.Text,
 	)
+}
+
+func huahuaHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	logger := log.FromContext(ctx)
+	logger.Info("huahuaHandler",
+		"text", update.Message.Text,
+	)
+
+	message := update.Message.Text
+	if strings.HasPrefix(message, "/huahua ") {
+		message = strings.TrimPrefix(message, "/huahua ")
+	}
+
+	resp, err := openai.GenImage(ctx, message)
+	if nil != err {
+		logger.Error("GenImage error ",
+			"error", err)
+		return
+	}
+
+	r, err := os.ReadFile(resp)
+	if err != nil {
+		logger.Error("ReadFile error ",
+			"error", err)
+		return
+	}
+
+	bf := strings.NewReader(string(r))
+
+	params := &bot.SendPhotoParams{
+		ChatID: update.Message.Chat.ID,
+		Photo: &models.InputFileUpload{
+			Filename: "huahua.png",
+			Data:     bf,
+		},
+		Caption: message,
+		ReplyParameters: &models.ReplyParameters{
+			ChatID:                   update.Message.Chat.ID,
+			MessageID:                update.Message.ID,
+			AllowSendingWithoutReply: true,
+			Quote:                    message,
+		},
+	}
+
+	// send image
+	_, err = b.SendPhoto(ctx, params)
+	if nil != err {
+		logger.Error("SendPhoto error ",
+			"error", err)
+		return
+	}
+
 }

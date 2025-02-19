@@ -12,7 +12,9 @@ type Config struct {
 	Host string `yaml:"host"`
 
 	DBName string `yaml:"dbName"`
-	OpenAI OpenAI `yaml:"openAI"`
+
+	OpenAI        OpenAI `yaml:"openAI"`
+	PictureVendor OpenAI `yaml:"pictureVendor"`
 }
 
 var (
