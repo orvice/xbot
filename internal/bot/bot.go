@@ -118,7 +118,7 @@ func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		"resp", resp,
 	)
 
-	resp = fmt.Sprintf("Model: %s Duration:* %s\n\n%s", conf.Conf.OpenAI.Model, duration, resp)
+	resp = fmt.Sprintf("Model: %s Duration: %s\n\n%s", conf.Conf.OpenAI.Model, duration, resp)
 
 	sendResp, err := b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
@@ -127,7 +127,7 @@ func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 			ChatID:                   update.Message.Chat.ID,
 			MessageID:                update.Message.ID,
 			AllowSendingWithoutReply: true,
-			Quote:                    update.Message.Text,
+			Quote:                    message,
 		},
 	})
 	if nil != err {
