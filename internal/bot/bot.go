@@ -88,6 +88,10 @@ func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		logger.Error("GetPromt error ",
 			"error", err)
 	}
+	if prompt.Promt == "" {
+		prompt.Promt = "You are a helpful assistant."
+	}
+
 	message := update.Message.Text
 
 	// remove gpt or /gpt prefix
