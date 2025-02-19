@@ -13,7 +13,6 @@ func Router(m *gin.Engine) {
 		logger.Info("new webhook request",
 			"header", c.Request.Header,
 			"method", c.Request.Method,
-			"uri", c.Request.RequestURI,
 		)
 		bot.GetBot().WebhookHandler().ServeHTTP(c.Writer, c.Request)
 	})
