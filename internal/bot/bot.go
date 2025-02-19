@@ -77,14 +77,6 @@ func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	logger.Info("defaultHandler",
 		"update", update,
 	)
-	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: update.Message.Chat.ID,
-		Text:   "Say /hello",
-	})
-	if nil != err {
-		logger.Error("SendMessage error ",
-			"error", err)
-	}
 }
 
 func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
