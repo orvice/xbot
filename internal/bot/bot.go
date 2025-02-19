@@ -44,6 +44,8 @@ func Init() error {
 			"error", err)
 	}
 	slog.Info("set webhook success", "resp", resp)
+
+	go b.StartWebhook(context.Background())
 	return nil
 }
 
