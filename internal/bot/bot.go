@@ -3,6 +3,7 @@ package bot
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 
@@ -35,9 +36,14 @@ func Init() error {
 	b.RegisterHandler(bot.HandlerTypeMessageText, "gpt", bot.MatchTypeExact, gptHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/save_prompt", bot.MatchTypeExact, savePromt)
 
-	b.SetWebhook(ctx, &bot.SetWebhookParams{
+	resp, err := b.SetWebhook(ctx, &bot.SetWebhookParams{
 		URL: fmt.Sprintf("%s/v1/webhook", conf.Conf.Host),
 	})
+	if err != nil {
+		slog.Error("set webhook error",
+			"error", err)
+	}
+	slog.Info("set webhook success", "resp", resp)
 	return nil
 }
 
