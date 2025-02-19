@@ -26,12 +26,12 @@ func newClient() (*openai.Client, error) {
 
 }
 
-func ChatCompletion(ctx context.Context, req string) (string, error) {
+func ChatCompletion(ctx context.Context, promptString, req string) (string, error) {
 	logger := log.FromContext(ctx)
 
 	prompt := openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleSystem,
-		Content: "You are a helpful assistant.",
+		Content: promptString,
 	}
 	resp, err := client.CreateChatCompletion(
 		context.Background(),

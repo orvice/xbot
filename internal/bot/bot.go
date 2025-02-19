@@ -6,11 +6,13 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strings"
 
 	"butterfly.orx.me/core/log"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"go.orx.me/xbot/internal/conf"
+	"go.orx.me/xbot/internal/dao"
 	"go.orx.me/xbot/internal/pkg/openai"
 )
 
@@ -86,10 +88,27 @@ func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	logger := log.FromContext(ctx)
+
+	prompt, err := dao.GetPromt(ctx, update.Message.Chat.ID)
+	if err != nil {
+		logger.Error("GetPromt error ",
+			"error", err)
+	}
+	message := update.Message.Text
+
+	// remove gpt or /gpt prefix
+	if strings.HasPrefix(message, "/gpt ") {
+		message = strings.TrimPrefix(message, "/gpt ")
+	} else if strings.HasPrefix(message, "gpt ") {
+		message = strings.TrimPrefix(message, "gpt ")
+	}
+
 	logger.Info("gptHandler",
-		"text", update.Message.Text,
+		"prompt", prompt.Promt,
+		"message", message,
 	)
-	resp, err := openai.ChatCompletion(ctx, update.Message.Text)
+
+	resp, err := openai.ChatCompletion(ctx, prompt.Promt, message)
 	if nil != err {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
