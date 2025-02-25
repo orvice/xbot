@@ -39,6 +39,7 @@ func Init() error {
 	b.RegisterHandler(bot.HandlerTypeMessageText, "gpt", bot.MatchTypePrefix, gptHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/huahua", bot.MatchTypePrefix, huahuaHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/save_prompt", bot.MatchTypePrefix, savePromt)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/dns_query", bot.MatchTypePrefix, dnsQueryHandler)
 
 	resp, err := b.SetWebhook(ctx, &bot.SetWebhookParams{
 		URL: fmt.Sprintf("%s/v1/webhook", conf.Conf.Host),

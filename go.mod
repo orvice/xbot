@@ -4,6 +4,7 @@ go 1.23.6
 
 require (
 	butterfly.orx.me/core v0.0.0-20250130070915-56b92cf89b83
+	github.com/babolivier/go-doh-client v0.0.0-20201028162107-a76cff4cb8b6
 	github.com/gin-gonic/gin v1.10.0
 	github.com/go-sql-driver/mysql v1.9.0
 	github.com/go-telegram/bot v1.14.0
