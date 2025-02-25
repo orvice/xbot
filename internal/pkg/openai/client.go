@@ -34,7 +34,7 @@ func newPictureClient() (*openai.Client, error) {
 	return client, nil
 }
 
-func ChatCompletion(ctx context.Context, promptString, req string) (string, error) {
+func ChatCompletion(ctx context.Context, model string, promptString, req string) (string, error) {
 	logger := log.FromContext(ctx)
 
 	prompt := openai.ChatCompletionMessage{
@@ -44,7 +44,7 @@ func ChatCompletion(ctx context.Context, promptString, req string) (string, erro
 	resp, err := client.CreateChatCompletion(
 		context.Background(),
 		openai.ChatCompletionRequest{
-			Model: conf.Conf.OpenAI.Model,
+			Model: model,
 			Messages: []openai.ChatCompletionMessage{
 				prompt,
 				{

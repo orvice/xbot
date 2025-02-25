@@ -109,7 +109,7 @@ func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 	start := time.Now()
 
-	resp, err := openai.ChatCompletion(ctx, prompt.Promt, message)
+	resp, err := openai.ChatCompletion(ctx, conf.Conf.OpenAI.Model, prompt.Promt, message)
 	if nil != err {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,

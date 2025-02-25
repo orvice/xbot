@@ -52,7 +52,7 @@ func dnsQueryHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	var response strings.Builder
 	response.WriteString(fmt.Sprintf("DNS query results for *%s*:\n\n", bot.EscapeMarkdown(domain)))
 	for _, record := range records {
-		response.WriteString(fmt.Sprintf("🌐 `%s`\n", record.IP.String()))
+		response.WriteString(fmt.Sprintf("🌐 `%s`\n", record.IP4))
 	}
 
 	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
