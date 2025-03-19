@@ -1,20 +1,18 @@
 package conf
 
 type OpenAI struct {
-	Endpoint string `yaml:"endpoint"`
-	Key      string `yaml:"key"`
-	Model    string `yaml:"model"`
+	Endpoint string   `yaml:"endpoint"`
+	Key      string   `yaml:"key"`
+	Model    string   `yaml:"model"`
+	Keys     []string `yaml:"keys"`
 }
 
 type Config struct {
 	TelegramBotToken string `yaml:"telegramBotToken"`
-
-	Host string `yaml:"host"`
-
-	DBName string `yaml:"dbName"`
-
-	OpenAI        OpenAI `yaml:"openAI"`
-	PictureVendor OpenAI `yaml:"pictureVendor"`
+	Host             string `yaml:"host"`
+	DBName           string `yaml:"dbName"`
+	OpenAI           OpenAI `yaml:"openAI"`
+	PictureVendor    OpenAI `yaml:"pictureVendor"`
 }
 
 var (

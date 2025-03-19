@@ -37,6 +37,7 @@ func Init() error {
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/hello", bot.MatchTypePrefix, helloHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/gpt", bot.MatchTypePrefix, gptHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "gpt", bot.MatchTypePrefix, gptHandler)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/sum", bot.MatchTypePrefix, sumHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/huahua", bot.MatchTypePrefix, huahuaHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/save_prompt", bot.MatchTypePrefix, savePromt)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/dns_query", bot.MatchTypePrefix, dnsQueryHandler)
@@ -79,6 +80,10 @@ func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	logger.Info("defaultHandler",
 		"update", update,
 	)
+	// save to store
+	dao.SaveMessage(ctx, &dao.Message{
+		Update: update,
+	})
 }
 
 func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
@@ -153,8 +158,8 @@ func savePromt(ctx context.Context, b *bot.Bot, update *models.Update) {
 	)
 
 	promt := update.Message.Text
-	if strings.HasPrefix(promt, "/save_prompt ") {
-		promt = strings.TrimPrefix(promt, "/save_prompt ")
+	if strings.HasPrefix(promt, "/save_prompt") {
+		promt = strings.TrimPrefix(promt, "/save_prompt")
 	}
 
 	err := dao.SavePromt(ctx, dao.Promt{
@@ -230,4 +235,123 @@ func huahuaHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		return
 	}
 
+}
+
+func sumHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	logger := log.FromContext(ctx)
+	logger.Info("sumHandler",
+		"text", update.Message.Text,
+	)
+
+	// Send a loading message to the user
+	loadingMsg, err := b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: update.Message.Chat.ID,
+		Text:   "Summarizing chat messages...",
+	})
+	if err != nil {
+		logger.Error("Failed to send loading message", "error", err)
+	}
+
+	// get messages by chat id
+	messages, err := dao.GetMessageByChatID(ctx, update.Message.Chat.ID)
+	if nil != err {
+		logger.Error("GetMessageByChatID error ",
+			"error", err)
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   "Error retrieving messages. Please try again later.",
+		})
+		return
+	}
+
+	logger.Info("sumHandler", "len", len(messages))
+
+	if len(messages) == 0 {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   "No messages found to summarize.",
+		})
+		return
+	}
+
+	// Build a conversation history from the messages
+	var conversationBuilder strings.Builder
+	conversationBuilder.WriteString("This is a conversation history from a Telegram chat. Please summarize the main topics discussed:\n\n")
+
+	// Add up to the last 50 messages (to avoid token limits)
+	maxMessages := 50
+	startIdx := 0
+	if len(messages) > maxMessages {
+		startIdx = len(messages) - maxMessages
+	}
+
+	for i := startIdx; i < len(messages); i++ {
+		if messages[i].Update.Message != nil && messages[i].Update.Message.Text != "" {
+			name := "User"
+			if messages[i].Update.Message.From != nil {
+				if messages[i].Update.Message.From.Username != "" {
+					name = "@" + messages[i].Update.Message.From.Username
+				} else if messages[i].Update.Message.From.FirstName != "" {
+					name = messages[i].Update.Message.From.FirstName
+					if messages[i].Update.Message.From.LastName != "" {
+						name += " " + messages[i].Update.Message.From.LastName
+					}
+				}
+			}
+			conversationBuilder.WriteString(fmt.Sprintf("%s: %s\n", name, messages[i].Update.Message.Text))
+		}
+	}
+
+	// Get the prompt to use
+	summarizationPrompt := "You are a helpful assistant that summarizes conversations. Provide a concise summary of the key points discussed in this conversation. Focus on the main topics, questions asked, and decisions made."
+
+	start := time.Now()
+
+	// Call OpenAI to summarize the conversation
+	conversationText := conversationBuilder.String()
+	summary, err := openai.ChatCompletion(ctx, conf.Conf.OpenAI.Model, summarizationPrompt, conversationText)
+	if err != nil {
+		logger.Error("ChatCompletion error", "error", err)
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   "Error generating summary. Please try again later.",
+		})
+		return
+	}
+
+	duration := time.Since(start)
+	logger.Info("Summary generated",
+		"duration", duration,
+		"chars", len(summary),
+	)
+
+	// Format the response
+	response := fmt.Sprintf("📝 **Chat Summary**\n\nModel: %s\nProcessed %d messages in %s\n\n%s", 
+		conf.Conf.OpenAI.Model, 
+		len(messages), 
+		duration.Round(time.Millisecond), 
+		summary)
+
+	// Edit the loading message with the summary
+	if loadingMsg != nil {
+		_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
+			ChatID:    update.Message.Chat.ID,
+			MessageID: loadingMsg.ID,
+			Text:      response,
+		})
+		if err != nil {
+			logger.Error("Failed to edit message", "error", err)
+			// If editing fails, send a new message
+			b.SendMessage(ctx, &bot.SendMessageParams{
+				ChatID: update.Message.Chat.ID,
+				Text:   response,
+			})
+		}
+	} else {
+		// If no loading message was sent, send a new message with the summary
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   response,
+		})
+	}
 }
