@@ -37,6 +37,7 @@ func Init() error {
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/hello", bot.MatchTypePrefix, helloHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/gpt", bot.MatchTypePrefix, gptHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "gpt", bot.MatchTypePrefix, gptHandler)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/sum", bot.MatchTypePrefix, sumHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/huahua", bot.MatchTypePrefix, huahuaHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/save_prompt", bot.MatchTypePrefix, savePromt)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/dns_query", bot.MatchTypePrefix, dnsQueryHandler)
@@ -234,4 +235,21 @@ func huahuaHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		return
 	}
 
+}
+
+func sumHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	logger := log.FromContext(ctx)
+	logger.Info("sumHandler",
+		"text", update.Message.Text,
+	)
+
+	// get messages by chat id
+	messages, err := dao.GetMessageByChatID(ctx, update.Message.Chat.ID)
+	if nil != err {
+		logger.Error("GetMessageByChatID error ",
+			"error", err)
+		return
+	}
+
+	logger.Info("sumHandler", "len", len(messages))
 }
