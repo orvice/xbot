@@ -79,6 +79,10 @@ func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	logger.Info("defaultHandler",
 		"update", update,
 	)
+	// save to store
+	dao.SaveMessage(ctx, &dao.Message{
+		Update: update,
+	})
 }
 
 func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {

@@ -12,9 +12,10 @@ import (
 )
 
 var (
-	db         *mongo.Client
-	usersColl  *mongo.Collection
-	promtsColl *mongo.Collection
+	db           *mongo.Client
+	usersColl    *mongo.Collection
+	promtsColl   *mongo.Collection
+	messagesColl *mongo.Collection
 )
 
 type Promt struct {
@@ -31,6 +32,7 @@ func Init() error {
 	}
 	usersColl = db.Database(conf.Conf.DBName).Collection("users")
 	promtsColl = db.Database(conf.Conf.DBName).Collection("promts")
+	messagesColl = db.Database(conf.Conf.DBName).Collection("messages")
 	return nil
 }
 
