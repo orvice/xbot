@@ -21,8 +21,12 @@ func SaveMessage(ctx context.Context, message *Message) error {
 	message.CreatedAt = now
 	message.UpdatedAt = now
 	message.ChatID = message.Update.Message.Chat.ID
-	_, err := messagesColl.InsertOne(ctx, message)
-	return err
+	result, err := messagesColl.InsertOne(ctx, message)
+	if nil != err {
+		return err
+	}
+	message.ID = result.InsertedID.(bson.ObjectID)
+	return nil
 }
 
 // GetMessageByChatID retrieves all messages for a specific chat ID

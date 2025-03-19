@@ -336,7 +336,7 @@ func sumHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 	// Build a conversation history from the messages
 	var conversationBuilder strings.Builder
-	conversationBuilder.WriteString("This is a conversation history from a Telegram chat. Please summarize the main topics discussed:\n\n")
+	conversationBuilder.WriteString("这是一个Telegram聊天历史记录。请总结讨论的主要话题：\n\n")
 
 	// Add up to the last 50 messages (to avoid token limits)
 	maxMessages := 50
@@ -363,7 +363,7 @@ func sumHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	}
 
 	// Get the prompt to use
-	summarizationPrompt := "You are a helpful assistant that summarizes conversations. Provide a concise summary of the key points discussed in this conversation. Focus on the main topics, questions asked, and decisions made."
+	summarizationPrompt := "你是一个帮助用户总结对话的助手。请提供这个对话中讨论的关键点的简明摘要。重点关注主要话题、提出的问题以及做出的决定。"
 
 	start := time.Now()
 
