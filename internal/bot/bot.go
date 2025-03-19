@@ -158,9 +158,8 @@ func savePromt(ctx context.Context, b *bot.Bot, update *models.Update) {
 	)
 
 	promt := update.Message.Text
-	if strings.HasPrefix(promt, "/save_prompt") {
-		promt = strings.TrimPrefix(promt, "/save_prompt")
-	}
+	// Directly use TrimPrefix without conditional check
+	promt = strings.TrimPrefix(promt, "/save_prompt")
 
 	err := dao.SavePromt(ctx, dao.Promt{
 		ChatID:    update.Message.Chat.ID,
@@ -192,9 +191,8 @@ func huahuaHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	)
 
 	message := update.Message.Text
-	if strings.HasPrefix(message, "/huahua ") {
-		message = strings.TrimPrefix(message, "/huahua ")
-	}
+	// Directly use TrimPrefix without conditional check
+	message = strings.TrimPrefix(message, "/huahua ")
 
 	resp, err := openai.GenImage(ctx, message)
 	if nil != err {
@@ -326,10 +324,10 @@ func sumHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	)
 
 	// Format the response
-	response := fmt.Sprintf("📝 **Chat Summary**\n\nModel: %s\nProcessed %d messages in %s\n\n%s", 
-		conf.Conf.OpenAI.Model, 
-		len(messages), 
-		duration.Round(time.Millisecond), 
+	response := fmt.Sprintf("📝 **Chat Summary**\n\nModel: %s\nProcessed %d messages in %s\n\n%s",
+		conf.Conf.OpenAI.Model,
+		len(messages),
+		duration.Round(time.Millisecond),
 		summary)
 
 	// Edit the loading message with the summary
