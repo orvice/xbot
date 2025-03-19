@@ -112,14 +112,46 @@ func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		"message", message,
 	)
 
+	// Send a processing message first
+	loadingMsg, err := b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: update.Message.Chat.ID,
+		Text:   "Processing your request...",
+		ReplyParameters: &models.ReplyParameters{
+			ChatID:                   update.Message.Chat.ID,
+			MessageID:                update.Message.ID,
+			AllowSendingWithoutReply: true,
+			Quote:                    message,
+		},
+	})
+	if err != nil {
+		logger.Error("Failed to send loading message", "error", err)
+	}
+
 	start := time.Now()
 
 	resp, err := openai.ChatCompletion(ctx, conf.Conf.OpenAI.Model, prompt.Promt, message)
 	if nil != err {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   "Error",
-		})
+		if loadingMsg != nil {
+			// Update the loading message with the error
+			_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
+				ChatID:    update.Message.Chat.ID,
+				MessageID: loadingMsg.ID,
+				Text:      "Error processing your request. Please try again.",
+			})
+			if err != nil {
+				logger.Error("Failed to edit message", "error", err)
+				// If editing fails, send a new message
+				b.SendMessage(ctx, &bot.SendMessageParams{
+					ChatID: update.Message.Chat.ID,
+					Text:   "Error processing your request. Please try again.",
+				})
+			}
+		} else {
+			b.SendMessage(ctx, &bot.SendMessageParams{
+				ChatID: update.Message.Chat.ID,
+				Text:   "Error processing your request. Please try again.",
+			})
+		}
 		return
 	}
 
@@ -129,26 +161,52 @@ func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		"resp", resp,
 	)
 
-	resp = fmt.Sprintf("Model: %s Duration: %s\n\n%s", conf.Conf.OpenAI.Model, duration, resp)
+	formattedResp := fmt.Sprintf("Model: %s Duration: %s\n\n%s", conf.Conf.OpenAI.Model, duration, resp)
 
-	sendResp, err := b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: update.Message.Chat.ID,
-		Text:   resp,
-		ReplyParameters: &models.ReplyParameters{
-			ChatID:                   update.Message.Chat.ID,
-			MessageID:                update.Message.ID,
-			AllowSendingWithoutReply: true,
-			Quote:                    message,
-		},
-	})
-	if nil != err {
-		logger.Error("SendMessage error ",
-			"error", err)
-		return
+	if loadingMsg != nil {
+		// Update the loading message with the response
+		_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
+			ChatID:    update.Message.Chat.ID,
+			MessageID: loadingMsg.ID,
+			Text:      formattedResp,
+		})
+		if err != nil {
+			logger.Error("Failed to edit message", "error", err)
+			// If editing fails, send a new message
+			sendResp, err := b.SendMessage(ctx, &bot.SendMessageParams{
+				ChatID: update.Message.Chat.ID,
+				Text:   formattedResp,
+				ReplyParameters: &models.ReplyParameters{
+					ChatID:                   update.Message.Chat.ID,
+					MessageID:                update.Message.ID,
+					AllowSendingWithoutReply: true,
+					Quote:                    message,
+				},
+			})
+			if err != nil {
+				logger.Error("SendMessage error ", "error", err)
+				return
+			}
+			logger.Info("SendMessage", "text", sendResp)
+		}
+	} else {
+		// If no loading message was sent, send a new message with the response
+		sendResp, err := b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   formattedResp,
+			ReplyParameters: &models.ReplyParameters{
+				ChatID:                   update.Message.Chat.ID,
+				MessageID:                update.Message.ID,
+				AllowSendingWithoutReply: true,
+				Quote:                    message,
+			},
+		})
+		if err != nil {
+			logger.Error("SendMessage error ", "error", err)
+			return
+		}
+		logger.Info("SendMessage", "text", sendResp)
 	}
-	logger.Info("SendMessage",
-		"text", sendResp,
-	)
 }
 
 func savePromt(ctx context.Context, b *bot.Bot, update *models.Update) {
