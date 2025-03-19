@@ -78,7 +78,7 @@ func helloHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	logger := log.FromContext(ctx)
 	logger.Info("defaultHandler",
-		"update", update,
+		"update", update.ID,
 	)
 	// save to store
 	err := dao.SaveMessage(ctx, &dao.Message{
