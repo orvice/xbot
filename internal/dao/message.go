@@ -9,7 +9,7 @@ import (
 )
 
 type Message struct {
-	ID        *bson.ObjectID `bson:"_id"`
+	ID        bson.ObjectID  `bson:"_id,omitempty"`
 	Update    *models.Update `bson:"update"`
 	ChatID    int64          `bson:"chat_id"`
 	CreatedAt int64          `bson:"created_at"`
