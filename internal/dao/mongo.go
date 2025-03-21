@@ -16,13 +16,15 @@ var (
 	usersColl    *mongo.Collection
 	promtsColl   *mongo.Collection
 	messagesColl *mongo.Collection
+	pullColl     *mongo.Collection
 )
 
 type Promt struct {
-	ChatID    int64  `bson:"chat_id" json:"chat_id"`
-	Promt     string `bson:"promt" json:"promt"`
-	CreatedAt int64  `bson:"created_at" json:"created_at"`
-	UpdatedAt int64  `bson:"updated_at" json:"updated_at"`
+	ID        bson.ObjectID `bson:"_id,omitempty"`
+	ChatID    int64         `bson:"chat_id" json:"chat_id"`
+	Promt     string        `bson:"promt" json:"promt"`
+	CreatedAt int64         `bson:"created_at" json:"created_at"`
+	UpdatedAt int64         `bson:"updated_at" json:"updated_at"`
 }
 
 func Init() error {
@@ -33,6 +35,7 @@ func Init() error {
 	usersColl = db.Database(conf.Conf.DBName).Collection("users")
 	promtsColl = db.Database(conf.Conf.DBName).Collection("promts")
 	messagesColl = db.Database(conf.Conf.DBName).Collection("messages")
+	pullColl = db.Database(conf.Conf.DBName).Collection("pulls")
 	return nil
 }
 

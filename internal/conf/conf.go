@@ -13,6 +13,13 @@ type Config struct {
 	DBName           string `yaml:"dbName"`
 	OpenAI           OpenAI `yaml:"openAI"`
 	PictureVendor    OpenAI `yaml:"pictureVendor"`
+	Bots             []Bot  `yaml:"bots"`
+}
+
+type Bot struct {
+	Name   string
+	Token  string
+	Enable bool
 }
 
 var (
