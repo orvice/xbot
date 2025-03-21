@@ -81,5 +81,5 @@ func GenImage(ctx context.Context, promptString string) (string, error) {
 	}
 	logger.Info("CreateImage success",
 		"data.url.len", len(resp.Data[0].URL))
-	return resp.Data[0].URL, nil
+	return resp.Data[0].B64JSON, nil
 }
