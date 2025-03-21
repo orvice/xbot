@@ -20,7 +20,10 @@ func SaveMessage(ctx context.Context, message *Message) error {
 	now := time.Now().Unix()
 	message.CreatedAt = now
 	message.UpdatedAt = now
-	message.ChatID = message.Update.Message.Chat.ID
+	// Handle potential nil values to avoid panic
+	if message.Update != nil && message.Update.Message != nil {
+		message.ChatID = message.Update.Message.Chat.ID
+	}
 	result, err := messagesColl.InsertOne(ctx, message)
 	if nil != err {
 		return err
