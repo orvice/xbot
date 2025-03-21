@@ -79,5 +79,7 @@ func GenImage(ctx context.Context, promptString string) (string, error) {
 			"error", err)
 		return "", err
 	}
+	logger.Info("CreateImage success",
+		"url", resp)
 	return resp.Data[0].URL, nil
 }
