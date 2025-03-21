@@ -34,6 +34,18 @@ var pullConfig = []PullConfig{
 		Title:   "💩今天有拉屎了吗?",
 		Options: []string{"Yes", "No"},
 	},
+	{
+		Type:    "sex",
+		Command: "/sex",
+		Title:   "💕今天做爱了吗?",
+		Options: []string{"Yes", "No"},
+	},
+	{
+		Type:    "workout",
+		Command: "/workout",
+		Title:   "💪今天健身了吗?",
+		Options: []string{"Yes", "No"},
+	},
 }
 
 func newPullHandler(config PullConfig) func(ctx context.Context, b *bot.Bot, update *models.Update) {
