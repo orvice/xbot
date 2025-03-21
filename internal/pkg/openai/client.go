@@ -70,8 +70,8 @@ func GenImage(ctx context.Context, promptString string) (string, error) {
 		N:              1,
 		Model:          conf.Conf.PictureVendor.Model,
 		Size:           openai.CreateImageSize1792x1024,
-		Quality:        openai.CreateImageQualityHD,
-		Style:          openai.CreateImageStyleNatural,
+		// Quality:        openai.CreateImageQualityHD,
+		Style: openai.CreateImageStyleNatural,
 	}
 	resp, err := pictureClient.CreateImage(ctx, reqBase64)
 	if err != nil {
