@@ -256,10 +256,37 @@ func huahuaHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	// Directly use TrimPrefix without conditional check
 	message = strings.TrimPrefix(message, "/huahua ")
 
+	// Send a processing message first
+	loadingMsg, err := b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: update.Message.Chat.ID,
+		Text:   "Generating image...",
+		ReplyParameters: &models.ReplyParameters{
+			ChatID:                   update.Message.Chat.ID,
+			MessageID:                update.Message.ID,
+			AllowSendingWithoutReply: true,
+			Quote:                    message,
+		},
+	})
+	if err != nil {
+		logger.Error("Failed to send loading message", "error", err)
+	}
+
 	resp, err := openai.GenImage(ctx, message)
 	if nil != err {
 		logger.Error("GenImage error ",
 			"error", err)
+
+		if loadingMsg != nil {
+			// Update the loading message with the error
+			_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
+				ChatID:    update.Message.Chat.ID,
+				MessageID: loadingMsg.ID,
+				Text:      "Error generating image. Please try again.",
+			})
+			if err != nil {
+				logger.Error("Failed to edit message", "error", err)
+			}
+		}
 		return
 	}
 
@@ -267,10 +294,33 @@ func huahuaHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	if err != nil {
 		logger.Error("ReadFile error ",
 			"error", err)
+
+		if loadingMsg != nil {
+			// Update the loading message with the error
+			_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
+				ChatID:    update.Message.Chat.ID,
+				MessageID: loadingMsg.ID,
+				Text:      "Error reading generated image. Please try again.",
+			})
+			if err != nil {
+				logger.Error("Failed to edit message", "error", err)
+			}
+		}
 		return
 	}
 
 	bf := strings.NewReader(string(r))
+
+	// If we have a loading message, delete it before sending the photo
+	if loadingMsg != nil {
+		_, err = b.DeleteMessage(ctx, &bot.DeleteMessageParams{
+			ChatID:    update.Message.Chat.ID,
+			MessageID: loadingMsg.ID,
+		})
+		if err != nil {
+			logger.Error("Failed to delete loading message", "error", err)
+		}
+	}
 
 	params := &bot.SendPhotoParams{
 		ChatID: update.Message.Chat.ID,
@@ -292,9 +342,23 @@ func huahuaHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	if nil != err {
 		logger.Error("SendPhoto error ",
 			"error", err)
+
+		// If we failed to send the photo and already deleted the loading message,
+		// send a new error message
+		_, err = b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   "Error sending the generated image. Please try again.",
+			ReplyParameters: &models.ReplyParameters{
+				ChatID:                   update.Message.Chat.ID,
+				MessageID:                update.Message.ID,
+				AllowSendingWithoutReply: true,
+			},
+		})
+		if err != nil {
+			logger.Error("Failed to send error message", "error", err)
+		}
 		return
 	}
-
 }
 
 func sumHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
