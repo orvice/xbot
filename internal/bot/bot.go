@@ -3,7 +3,9 @@ package bot
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -271,7 +273,7 @@ func huahuaHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		logger.Error("Failed to send loading message", "error", err)
 	}
 
-	resp, err := openai.GenImage(ctx, message)
+	imageURL, err := openai.GenImage(ctx, message)
 	if nil != err {
 		logger.Error("GenImage error ",
 			"error", err)
@@ -290,9 +292,31 @@ func huahuaHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		return
 	}
 
-	r, err := os.ReadFile(resp)
+	// Fetch image from URL
+	resp, err := http.Get(imageURL)
 	if err != nil {
-		logger.Error("ReadFile error ",
+		logger.Error("HTTP Get error ",
+			"error", err)
+
+		if loadingMsg != nil {
+			// Update the loading message with the error
+			_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
+				ChatID:    update.Message.Chat.ID,
+				MessageID: loadingMsg.ID,
+				Text:      "Error fetching generated image. Please try again.",
+			})
+			if err != nil {
+				logger.Error("Failed to edit message", "error", err)
+			}
+		}
+		return
+	}
+	defer resp.Body.Close()
+
+	// Read response body
+	r, err := io.ReadAll(resp.Body)
+	if err != nil {
+		logger.Error("ReadAll error ",
 			"error", err)
 
 		if loadingMsg != nil {
