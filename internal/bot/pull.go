@@ -50,7 +50,7 @@ var pullConfig = []PullConfig{
 
 func newPullHandler(config PullConfig) func(ctx context.Context, b *bot.Bot, update *models.Update) {
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
-		logger := log.FromContext(ctx)
+		logger := log.FromContext(ctx).With("method", "pullHandler")
 		logger.Info("newPullHandler",
 			"cmd", config.Command,
 			"type", config.Type,
