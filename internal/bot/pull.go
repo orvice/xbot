@@ -10,6 +10,10 @@ import (
 	"go.orx.me/xbot/internal/dao"
 )
 
+var (
+	boolFalse = false
+)
+
 type PullConfig struct {
 	Type    string
 	Command string
@@ -86,9 +90,10 @@ func newPullHandler(config PullConfig) func(ctx context.Context, b *bot.Bot, upd
 
 		// Send a message first
 		message, err := b.SendPoll(ctx, &bot.SendPollParams{
-			ChatID:   update.Message.Chat.ID,
-			Question: config.Title + " for " + date,
-			Options:  options,
+			ChatID:      update.Message.Chat.ID,
+			Question:    config.Title + " for " + date,
+			Options:     options,
+			IsAnonymous: &boolFalse,
 		})
 
 		if err != nil {
