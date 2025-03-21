@@ -12,7 +12,8 @@ type Pull struct {
 	ID        bson.ObjectID `bson:"_id,omitempty"`
 	Type      string
 	Date      string
-	MessageID string
+	ChatID    int64
+	MessageID int64
 	CreatedAt int64
 	UpdatedAt int64
 }

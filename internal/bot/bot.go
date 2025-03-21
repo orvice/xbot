@@ -1,9 +1,9 @@
 package bot
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
-	"bytes"
 	"fmt"
 	"log/slog"
 	"os"
@@ -43,6 +43,10 @@ func Init() error {
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/huahua", bot.MatchTypePrefix, huahuaHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/save_prompt", bot.MatchTypePrefix, savePromt)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/dns_query", bot.MatchTypePrefix, dnsQueryHandler)
+
+	for _, config := range pullConfig {
+		b.RegisterHandler(bot.HandlerTypeMessageText, config.Command, bot.MatchTypePrefix, newPullHandler(config))
+	}
 
 	resp, err := b.SetWebhook(ctx, &bot.SetWebhookParams{
 		URL: fmt.Sprintf("%s/v1/webhook", conf.Conf.Host),
@@ -297,7 +301,7 @@ func huahuaHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	parts := strings.Split(imageData, ",")
 	if len(parts) != 2 {
 		logger.Error("Invalid image data format")
-		
+
 		if loadingMsg != nil {
 			// Update the loading message with the error
 			_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
@@ -316,7 +320,7 @@ func huahuaHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	imgData, err := base64.StdEncoding.DecodeString(parts[1])
 	if err != nil {
 		logger.Error("Base64 decode error", "error", err)
-		
+
 		if loadingMsg != nil {
 			// Update the loading message with the error
 			_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
