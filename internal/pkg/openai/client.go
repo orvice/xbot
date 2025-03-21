@@ -80,6 +80,6 @@ func GenImage(ctx context.Context, promptString string) (string, error) {
 		return "", err
 	}
 	logger.Info("CreateImage success",
-		"url", resp)
-	return resp.Data[0].URL, nil
+		"data", "received")
+	return "data:image/jpeg;base64," + resp.Data[0].B64JSON, nil
 }

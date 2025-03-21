@@ -2,10 +2,10 @@ package bot
 
 import (
 	"context"
+	"encoding/base64"
+	"bytes"
 	"fmt"
-	"io"
 	"log/slog"
-	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -273,7 +273,7 @@ func huahuaHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		logger.Error("Failed to send loading message", "error", err)
 	}
 
-	imageURL, err := openai.GenImage(ctx, message)
+	imageData, err := openai.GenImage(ctx, message)
 	if nil != err {
 		logger.Error("GenImage error ",
 			"error", err)
@@ -292,39 +292,18 @@ func huahuaHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		return
 	}
 
-	// Fetch image from URL
-	resp, err := http.Get(imageURL)
-	if err != nil {
-		logger.Error("HTTP Get error ",
-			"error", err)
-
+	// Extract the base64 data from the imageData string
+	// Format is: data:image/jpeg;base64,<actual-base64-data>
+	parts := strings.Split(imageData, ",")
+	if len(parts) != 2 {
+		logger.Error("Invalid image data format")
+		
 		if loadingMsg != nil {
 			// Update the loading message with the error
 			_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
 				ChatID:    update.Message.Chat.ID,
 				MessageID: loadingMsg.ID,
-				Text:      "Error fetching generated image. Please try again.",
-			})
-			if err != nil {
-				logger.Error("Failed to edit message", "error", err)
-			}
-		}
-		return
-	}
-	defer resp.Body.Close()
-
-	// Read response body
-	r, err := io.ReadAll(resp.Body)
-	if err != nil {
-		logger.Error("ReadAll error ",
-			"error", err)
-
-		if loadingMsg != nil {
-			// Update the loading message with the error
-			_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
-				ChatID:    update.Message.Chat.ID,
-				MessageID: loadingMsg.ID,
-				Text:      "Error reading generated image. Please try again.",
+				Text:      "Error processing image data. Please try again.",
 			})
 			if err != nil {
 				logger.Error("Failed to edit message", "error", err)
@@ -333,7 +312,26 @@ func huahuaHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		return
 	}
 
-	bf := strings.NewReader(string(r))
+	// Decode the base64 data
+	imgData, err := base64.StdEncoding.DecodeString(parts[1])
+	if err != nil {
+		logger.Error("Base64 decode error", "error", err)
+		
+		if loadingMsg != nil {
+			// Update the loading message with the error
+			_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
+				ChatID:    update.Message.Chat.ID,
+				MessageID: loadingMsg.ID,
+				Text:      "Error decoding image data. Please try again.",
+			})
+			if err != nil {
+				logger.Error("Failed to edit message", "error", err)
+			}
+		}
+		return
+	}
+
+	bf := bytes.NewReader(imgData)
 
 	// If we have a loading message, delete it before sending the photo
 	if loadingMsg != nil {
