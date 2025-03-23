@@ -17,6 +17,8 @@ type Config struct {
 	PictureVendor OpenAI   `yaml:"pictureVendor"`
 	Bots          []Bot    `yaml:"bots"`
 	S3            S3Config `yaml:"s3Config"`
+
+	MessageStorage string `yaml:"messageStorage"`
 }
 
 type Bot struct {

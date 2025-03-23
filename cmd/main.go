@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+
 	"butterfly.orx.me/core"
 	"butterfly.orx.me/core/app"
 	"go.orx.me/xbot/internal/bot"
@@ -19,7 +21,10 @@ func NewApp() *app.App {
 		Service: "xbot",
 		Router:  http.Router,
 		InitFunc: []func() error{
-			dao.Init,
+			// Wrap dao.Init to match the required function signature
+			func() error {
+				return dao.Init(context.Background())
+			},
 			openai.Init,
 			bot.Init,
 		},

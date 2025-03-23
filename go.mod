@@ -8,7 +8,6 @@ require (
 	github.com/gin-gonic/gin v1.10.0
 	github.com/go-sql-driver/mysql v1.9.0
 	github.com/go-telegram/bot v1.14.0
-	github.com/minio/minio-go v6.0.14+incompatible
 	github.com/minio/minio-go/v7 v7.0.88
 	github.com/sashabaranov/go-openai v1.37.0
 	go.mongodb.org/mongo-driver/v2 v2.0.0

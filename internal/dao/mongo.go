@@ -27,7 +27,7 @@ type Promt struct {
 	UpdatedAt int64         `bson:"updated_at" json:"updated_at"`
 }
 
-func Init() error {
+func InitMongo(ctx context.Context) error {
 	db = bmongo.GetClient("cloud")
 	if db == nil {
 		return errors.New("mongo client is nil")
