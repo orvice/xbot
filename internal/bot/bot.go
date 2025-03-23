@@ -88,7 +88,7 @@ func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		"update", update.ID,
 	)
 	// save to store
-	err := dao.SaveMessage(ctx, &dao.Message{
+	err := dao.GetMessageStorage().SaveMessage(ctx, &dao.Message{
 		Update: update,
 	})
 	if nil != err {
@@ -420,13 +420,13 @@ func prepareChatHistory(messages []*dao.Message, maxMessages int, prefix string)
 }
 
 // processChatHistory handles the common logic for processing chat history with OpenAI
-func processChatHistory(ctx context.Context, b *bot.Bot, update *models.Update, loadingMsg *models.Message, 
+func processChatHistory(ctx context.Context, b *bot.Bot, update *models.Update, loadingMsg *models.Message,
 	prompt string, messagePrefix string, responseTitle string, noMessagesText string) {
-	
+
 	logger := log.FromContext(ctx)
-	
+
 	// get messages by chat id
-	messages, err := dao.GetMessageByChatID(ctx, update.Message.Chat.ID)
+	messages, err := dao.GetMessageStorage().GetMessageByChatID(ctx, update.Message.Chat.ID)
 	if nil != err {
 		logger.Error("GetMessageByChatID error ",
 			"error", err)
@@ -449,7 +449,7 @@ func processChatHistory(ctx context.Context, b *bot.Bot, update *models.Update, 
 
 	// Build a conversation history from the messages
 	conversationText := prepareChatHistory(messages, 50, messagePrefix)
-	
+
 	start := time.Now()
 
 	// Use models defined in config with fallback
@@ -527,15 +527,15 @@ func sumHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	// Get the prompt to use
 	summarizationPrompt := "你是一个帮助用户总结对话的助手。请提供这个对话中讨论的关键点的简明摘要。重点关注主要话题、提出的问题以及做出的决定。"
 	messagePrefix := "这是一个Telegram聊天历史记录。请总结讨论的主要话题：\n\n"
-	
+
 	processChatHistory(
-		ctx, 
-		b, 
-		update, 
-		loadingMsg, 
-		summarizationPrompt, 
-		messagePrefix, 
-		"📝 **Chat Summary**", 
+		ctx,
+		b,
+		update,
+		loadingMsg,
+		summarizationPrompt,
+		messagePrefix,
+		"📝 **Chat Summary**",
 		"No messages found to summarize.",
 	)
 }
@@ -578,7 +578,7 @@ func askHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	}
 
 	// Get messages by chat id
-	messages, err := dao.GetMessageByChatID(ctx, update.Message.Chat.ID)
+	messages, err := dao.GetMessageStorage().GetMessageByChatID(ctx, update.Message.Chat.ID)
 	if nil != err {
 		logger.Error("GetMessageByChatID error ",
 			"error", err)
@@ -605,7 +605,7 @@ func askHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 	// Build a conversation history from the messages
 	conversationText := prepareChatHistory(messages, 50, messagePrefix)
-	
+
 	start := time.Now()
 
 	// Use models defined in config with fallback

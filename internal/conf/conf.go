@@ -16,12 +16,20 @@ type Config struct {
 	OpenAI        OpenAI   `yaml:"openAI"`
 	PictureVendor OpenAI   `yaml:"pictureVendor"`
 	Bots          []Bot    `yaml:"bots"`
+	S3            S3Config `yaml:"s3Config"`
 }
 
 type Bot struct {
 	Name   string
 	Token  string
 	Enable bool
+}
+
+type S3Config struct {
+	Endpoint  string `yaml:"endpoint"`
+	AccessKey string `yaml:"accessKey"`
+	SecretKey string `yaml:"secretKey"`
+	Bucket    string `yaml:"bucket"`
 }
 
 var (

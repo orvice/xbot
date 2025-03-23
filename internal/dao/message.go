@@ -5,8 +5,15 @@ import (
 	"time"
 
 	"github.com/go-telegram/bot/models"
+	"github.com/minio/minio-go/v7"
 	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
+
+type MessageStorage interface {
+	SaveMessage(ctx context.Context, message *Message) error
+	GetMessageByChatID(ctx context.Context, chatID int64) ([]*Message, error)
+}
 
 type Message struct {
 	ID        bson.ObjectID  `bson:"_id,omitempty"`
@@ -16,7 +23,19 @@ type Message struct {
 	UpdatedAt int64          `bson:"updated_at"`
 }
 
-func SaveMessage(ctx context.Context, message *Message) error {
+var (
+	defaultMessageStorage MessageStorage
+)
+
+func GetMessageStorage() MessageStorage {
+	return defaultMessageStorage
+}
+
+type MongoDBStorage struct {
+	messagesColl *mongo.Collection
+}
+
+func (s *MongoDBStorage) SaveMessage(ctx context.Context, message *Message) error {
 	now := time.Now().Unix()
 	message.CreatedAt = now
 	message.UpdatedAt = now
@@ -24,7 +43,7 @@ func SaveMessage(ctx context.Context, message *Message) error {
 	if message.Update != nil && message.Update.Message != nil {
 		message.ChatID = message.Update.Message.Chat.ID
 	}
-	result, err := messagesColl.InsertOne(ctx, message)
+	result, err := s.messagesColl.InsertOne(ctx, message)
 	if nil != err {
 		return err
 	}
@@ -33,8 +52,8 @@ func SaveMessage(ctx context.Context, message *Message) error {
 }
 
 // GetMessageByChatID retrieves all messages for a specific chat ID
-func GetMessageByChatID(ctx context.Context, chatID int64) ([]*Message, error) {
-	cursor, err := messagesColl.Find(ctx, bson.M{"chat_id": chatID})
+func (s *MongoDBStorage) GetMessageByChatID(ctx context.Context, chatID int64) ([]*Message, error) {
+	cursor, err := s.messagesColl.Find(ctx, bson.M{"chat_id": chatID})
 	if err != nil {
 		return nil, err
 	}
@@ -54,4 +73,8 @@ func GetMessageByChatID(ctx context.Context, chatID int64) ([]*Message, error) {
 	}
 
 	return messages, nil
+}
+
+type S3MessageStorage struct {
+	client *minio.Client
 }
