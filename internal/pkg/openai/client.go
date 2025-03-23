@@ -34,9 +34,59 @@ func newPictureClient() (*openai.Client, error) {
 	return client, nil
 }
 
+func ChatCompletionWithModels(ctx context.Context, models []string, promptString, req string) (string, string, error) {
+	logger := log.FromContext(ctx)
+	prompt := openai.ChatCompletionMessage{
+		Role:    openai.ChatMessageRoleSystem,
+		Content: promptString,
+	}
+
+	// Try each model in the provided order until one succeeds
+	var lastError error
+	for _, currentModel := range models {
+		logger.Info("Attempting to use model", "model", currentModel)
+
+		// Try to call the API with current model
+		resp, err := client.CreateChatCompletion(
+			ctx, // Use the passed context instead of creating a new one
+			openai.ChatCompletionRequest{
+				Model: currentModel,
+				Messages: []openai.ChatCompletionMessage{
+					prompt,
+					{
+						Role:    openai.ChatMessageRoleUser,
+						Content: req,
+					},
+				},
+			},
+		)
+
+		// If successful, return the result
+		if err == nil {
+			logger.Info("Successfully used model",
+				"model", currentModel,
+				"responseLength", len(resp.Choices[0].Message.Content),
+			)
+			return resp.Choices[0].Message.Content, currentModel, nil
+		}
+
+		// Log the error and continue to next model
+		lastError = err
+		logger.Error("ChatCompletion failed with model",
+			"model", currentModel,
+			"error", err)
+	}
+
+	// If we've tried all models and all failed, return the last error
+	logger.Error("All models failed in ChatCompletionWithModels",
+		"attemptedModels", models,
+		"lastError", lastError)
+
+	return "", "", lastError
+}
+
 func ChatCompletion(ctx context.Context, model string, promptString, req string) (string, error) {
 	logger := log.FromContext(ctx)
-
 	prompt := openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleSystem,
 		Content: promptString,

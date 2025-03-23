@@ -452,8 +452,15 @@ func processChatHistory(ctx context.Context, b *bot.Bot, update *models.Update, 
 	
 	start := time.Now()
 
-	// Call OpenAI to process the conversation
-	result, err := openai.ChatCompletion(ctx, conf.Conf.OpenAI.Model, prompt, conversationText)
+	// Use models defined in config with fallback
+	models := conf.Conf.SummaryModels
+	if len(models) == 0 {
+		// Fallback to the default model if no models defined in config
+		models = []string{conf.Conf.OpenAI.Model}
+	}
+
+	// Call OpenAI to process the conversation with multiple model options
+	result, usedModel, err := openai.ChatCompletionWithModels(ctx, models, prompt, conversationText)
 	if err != nil {
 		logger.Error("ChatCompletion error", "error", err)
 		b.SendMessage(ctx, &bot.SendMessageParams{
@@ -466,13 +473,14 @@ func processChatHistory(ctx context.Context, b *bot.Bot, update *models.Update, 
 	duration := time.Since(start)
 	logger.Info("AI response generated",
 		"duration", duration,
+		"model", usedModel,
 		"chars", len(result),
 	)
 
 	// Format the response
 	response := fmt.Sprintf("%s\n\nModel: %s\nProcessed %d messages in %s\n\n%s",
 		responseTitle,
-		conf.Conf.OpenAI.Model,
+		usedModel,
 		len(messages),
 		duration.Round(time.Millisecond),
 		result)
@@ -600,8 +608,15 @@ func askHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	
 	start := time.Now()
 
-	// Call OpenAI to process the conversation
-	result, err := openai.ChatCompletion(ctx, conf.Conf.OpenAI.Model, answerPrompt, conversationText)
+	// Use models defined in config with fallback
+	models := conf.Conf.SummaryModels
+	if len(models) == 0 {
+		// Fallback to the default model if no models defined in config
+		models = []string{conf.Conf.OpenAI.Model}
+	}
+
+	// Call OpenAI to process the conversation with multiple model options
+	result, usedModel, err := openai.ChatCompletionWithModels(ctx, models, answerPrompt, conversationText)
 	if err != nil {
 		logger.Error("ChatCompletion error", "error", err)
 		b.SendMessage(ctx, &bot.SendMessageParams{
@@ -614,13 +629,14 @@ func askHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	duration := time.Since(start)
 	logger.Info("AI response generated",
 		"duration", duration,
+		"model", usedModel,
 		"chars", len(result),
 	)
 
 	// Format the response
 	response := fmt.Sprintf("❓ **Answer to: %s**\n\nModel: %s\nProcessed in %s\n\n%s",
 		userQuestion,
-		conf.Conf.OpenAI.Model,
+		usedModel,
 		duration.Round(time.Millisecond),
 		result)
 
