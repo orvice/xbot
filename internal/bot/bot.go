@@ -40,6 +40,7 @@ func Init() error {
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/gpt", bot.MatchTypePrefix, gptHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "gpt", bot.MatchTypePrefix, gptHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/sum", bot.MatchTypePrefix, sumHandler)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/ask", bot.MatchTypePrefix, askHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/huahua", bot.MatchTypePrefix, huahuaHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/save_prompt", bot.MatchTypePrefix, savePromt)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/dns_query", bot.MatchTypePrefix, dnsQueryHandler)
@@ -387,49 +388,12 @@ func huahuaHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	}
 }
 
-func sumHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	logger := log.FromContext(ctx)
-	logger.Info("sumHandler",
-		"text", update.Message.Text,
-	)
-
-	// Send a loading message to the user
-	loadingMsg, err := b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: update.Message.Chat.ID,
-		Text:   "Summarizing chat messages...",
-	})
-	if err != nil {
-		logger.Error("Failed to send loading message", "error", err)
-	}
-
-	// get messages by chat id
-	messages, err := dao.GetMessageByChatID(ctx, update.Message.Chat.ID)
-	if nil != err {
-		logger.Error("GetMessageByChatID error ",
-			"error", err)
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   "Error retrieving messages. Please try again later.",
-		})
-		return
-	}
-
-	logger.Info("sumHandler", "len", len(messages))
-
-	if len(messages) == 0 {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   "No messages found to summarize.",
-		})
-		return
-	}
-
-	// Build a conversation history from the messages
+// prepareChatHistory prepares conversation history from messages
+func prepareChatHistory(messages []*dao.Message, maxMessages int, prefix string) string {
 	var conversationBuilder strings.Builder
-	conversationBuilder.WriteString("这是一个Telegram聊天历史记录。请总结讨论的主要话题：\n\n")
+	conversationBuilder.WriteString(prefix)
 
-	// Add up to the last 50 messages (to avoid token limits)
-	maxMessages := 50
+	// Add up to the last N messages (to avoid token limits)
 	startIdx := 0
 	if len(messages) > maxMessages {
 		startIdx = len(messages) - maxMessages
@@ -452,37 +416,68 @@ func sumHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		}
 	}
 
-	// Get the prompt to use
-	summarizationPrompt := "你是一个帮助用户总结对话的助手。请提供这个对话中讨论的关键点的简明摘要。重点关注主要话题、提出的问题以及做出的决定。"
+	return conversationBuilder.String()
+}
 
+// processChatHistory handles the common logic for processing chat history with OpenAI
+func processChatHistory(ctx context.Context, b *bot.Bot, update *models.Update, loadingMsg *models.Message, 
+	prompt string, messagePrefix string, responseTitle string, noMessagesText string) {
+	
+	logger := log.FromContext(ctx)
+	
+	// get messages by chat id
+	messages, err := dao.GetMessageByChatID(ctx, update.Message.Chat.ID)
+	if nil != err {
+		logger.Error("GetMessageByChatID error ",
+			"error", err)
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   "Error retrieving messages. Please try again later.",
+		})
+		return
+	}
+
+	logger.Info("Chat history processing", "len", len(messages))
+
+	if len(messages) == 0 {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   noMessagesText,
+		})
+		return
+	}
+
+	// Build a conversation history from the messages
+	conversationText := prepareChatHistory(messages, 50, messagePrefix)
+	
 	start := time.Now()
 
-	// Call OpenAI to summarize the conversation
-	conversationText := conversationBuilder.String()
-	summary, err := openai.ChatCompletion(ctx, conf.Conf.OpenAI.Model, summarizationPrompt, conversationText)
+	// Call OpenAI to process the conversation
+	result, err := openai.ChatCompletion(ctx, conf.Conf.OpenAI.Model, prompt, conversationText)
 	if err != nil {
 		logger.Error("ChatCompletion error", "error", err)
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   "Error generating summary. Please try again later.",
+			Text:   "Error processing chat history. Please try again later.",
 		})
 		return
 	}
 
 	duration := time.Since(start)
-	logger.Info("Summary generated",
+	logger.Info("AI response generated",
 		"duration", duration,
-		"chars", len(summary),
+		"chars", len(result),
 	)
 
 	// Format the response
-	response := fmt.Sprintf("📝 **Chat Summary**\n\nModel: %s\nProcessed %d messages in %s\n\n%s",
+	response := fmt.Sprintf("%s\n\nModel: %s\nProcessed %d messages in %s\n\n%s",
+		responseTitle,
 		conf.Conf.OpenAI.Model,
 		len(messages),
 		duration.Round(time.Millisecond),
-		summary)
+		result)
 
-	// Edit the loading message with the summary
+	// Edit the loading message with the result
 	if loadingMsg != nil {
 		_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
 			ChatID:    update.Message.Chat.ID,
@@ -498,7 +493,154 @@ func sumHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 			})
 		}
 	} else {
-		// If no loading message was sent, send a new message with the summary
+		// If no loading message was sent, send a new message with the result
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   response,
+		})
+	}
+}
+
+func sumHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	logger := log.FromContext(ctx)
+	logger.Info("sumHandler",
+		"text", update.Message.Text,
+	)
+
+	// Send a loading message to the user
+	loadingMsg, err := b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: update.Message.Chat.ID,
+		Text:   "Summarizing chat messages...",
+	})
+	if err != nil {
+		logger.Error("Failed to send loading message", "error", err)
+	}
+
+	// Get the prompt to use
+	summarizationPrompt := "你是一个帮助用户总结对话的助手。请提供这个对话中讨论的关键点的简明摘要。重点关注主要话题、提出的问题以及做出的决定。"
+	messagePrefix := "这是一个Telegram聊天历史记录。请总结讨论的主要话题：\n\n"
+	
+	processChatHistory(
+		ctx, 
+		b, 
+		update, 
+		loadingMsg, 
+		summarizationPrompt, 
+		messagePrefix, 
+		"📝 **Chat Summary**", 
+		"No messages found to summarize.",
+	)
+}
+
+func askHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	logger := log.FromContext(ctx)
+	logger.Info("askHandler",
+		"text", update.Message.Text,
+	)
+
+	// Extract the question from user input
+	userMessage := update.Message.Text
+	userQuestion := ""
+	if strings.HasPrefix(userMessage, "/ask ") {
+		userQuestion = strings.TrimPrefix(userMessage, "/ask ")
+	}
+
+	// If no question was provided, inform the user
+	if userQuestion == "" {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   "Please provide a question after the /ask command. For example: /ask What did we decide about the project deadline?",
+		})
+		return
+	}
+
+	// Send a loading message to the user
+	loadingMsg, err := b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: update.Message.Chat.ID,
+		Text:   "Searching chat history for an answer...",
+		ReplyParameters: &models.ReplyParameters{
+			ChatID:                   update.Message.Chat.ID,
+			MessageID:                update.Message.ID,
+			AllowSendingWithoutReply: true,
+			Quote:                    userQuestion,
+		},
+	})
+	if err != nil {
+		logger.Error("Failed to send loading message", "error", err)
+	}
+
+	// Get messages by chat id
+	messages, err := dao.GetMessageByChatID(ctx, update.Message.Chat.ID)
+	if nil != err {
+		logger.Error("GetMessageByChatID error ",
+			"error", err)
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   "Error retrieving messages. Please try again later.",
+		})
+		return
+	}
+
+	logger.Info("Chat history processing", "len", len(messages))
+
+	if len(messages) == 0 {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   "No chat history found to answer your question.",
+		})
+		return
+	}
+
+	// Create a customized prompt that includes the user's question
+	answerPrompt := fmt.Sprintf("你是一个帮助用户从对话历史中找答案的助手。请根据提供的聊天记录，回答用户的问题：'%s'。如果聊天记录中没有足够的信息来回答这个问题，请诚实地说明，并提供一些基于现有信息的建议或见解。", userQuestion)
+	messagePrefix := "这是一个Telegram聊天历史记录：\n\n"
+
+	// Build a conversation history from the messages
+	conversationText := prepareChatHistory(messages, 50, messagePrefix)
+	
+	start := time.Now()
+
+	// Call OpenAI to process the conversation
+	result, err := openai.ChatCompletion(ctx, conf.Conf.OpenAI.Model, answerPrompt, conversationText)
+	if err != nil {
+		logger.Error("ChatCompletion error", "error", err)
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   "Error processing your question. Please try again later.",
+		})
+		return
+	}
+
+	duration := time.Since(start)
+	logger.Info("AI response generated",
+		"duration", duration,
+		"chars", len(result),
+	)
+
+	// Format the response
+	response := fmt.Sprintf("❓ **Answer to: %s**\n\nModel: %s\nProcessed in %s\n\n%s",
+		userQuestion,
+		conf.Conf.OpenAI.Model,
+		duration.Round(time.Millisecond),
+		result)
+
+	// Edit the loading message with the result
+	if loadingMsg != nil {
+		_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
+			ChatID:    update.Message.Chat.ID,
+			MessageID: loadingMsg.ID,
+			Text:      response,
+		})
+		if err != nil {
+			logger.Error("Failed to edit message", "error", err)
+			// If editing fails, send a new message
+			b.SendMessage(ctx, &bot.SendMessageParams{
+				ChatID: update.Message.Chat.ID,
+				Text:   response,
+			})
+		}
+	} else {
+		// If no loading message was sent, send a new message with the result
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
 			Text:   response,
