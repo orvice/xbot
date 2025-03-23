@@ -16,6 +16,8 @@ var ErrNoStorage = errors.New("no message storage configured")
 func Init(ctx context.Context) error {
 	log.Println("Initializing data access layer...")
 
+	InitMongo(context.Background())
+
 	// Message storage configuration
 	storage := conf.Conf.MessageStorage
 	log.Printf("Message storage configuration: %s", storage)
