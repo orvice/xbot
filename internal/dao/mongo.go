@@ -37,10 +37,6 @@ func InitMongo(ctx context.Context) error {
 	messagesColl = db.Database(conf.Conf.DBName).Collection("messages")
 	pullColl = db.Database(conf.Conf.DBName).Collection("pulls")
 
-	defaultMessageStorage = &MongoDBStorage{
-		messagesColl: messagesColl,
-	}
-
 	return nil
 }
 
