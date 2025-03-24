@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"sort"
 	"strings"
 	"time"
 
@@ -46,6 +47,7 @@ func Init() error {
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/dns_query", bot.MatchTypePrefix, dnsQueryHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/getid", bot.MatchTypeExact, getIDHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/me", bot.MatchTypeExact, meHandler)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/hualao", bot.MatchTypeExact, hualaoHandler)
 
 	for _, config := range pullConfig {
 		b.RegisterHandler(bot.HandlerTypeMessageText, config.Command, bot.MatchTypePrefix, newPullHandler(config))
@@ -719,5 +721,168 @@ func meHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	})
 	if err != nil {
 		logger.Error("SendMessage error", "error", err)
+	}
+}
+
+type userStats struct {
+	FirstName string
+	LastName  string
+	Username  string
+	Count     int
+}
+
+func hualaoHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	logger := log.FromContext(ctx)
+	logger.Info("hualaoHandler",
+		"chat_id", update.Message.Chat.ID,
+	)
+
+	// Send initial loading message
+	loadingMsg, err := b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: update.Message.Chat.ID,
+		Text:   "Generating chat statistics for the last 7 days...",
+	})
+	if err != nil {
+		logger.Error("Failed to send loading message", "error", err)
+		return
+	}
+
+	// Get messages from the last 7 days
+	messages, err := dao.GetMessageStorage().GetMessageByChatID(ctx, update.Message.Chat.ID)
+	if err != nil {
+		logger.Error("Failed to get messages", "error", err)
+		b.EditMessageText(ctx, &bot.EditMessageTextParams{
+			ChatID:    update.Message.Chat.ID,
+			MessageID: loadingMsg.ID,
+			Text:      "Error: Failed to retrieve chat messages.",
+		})
+		return
+	}
+
+	if len(messages) == 0 {
+		b.EditMessageText(ctx, &bot.EditMessageTextParams{
+			ChatID:    update.Message.Chat.ID,
+			MessageID: loadingMsg.ID,
+			Text:      "No messages found in the last 7 days.",
+		})
+		return
+	}
+
+	// Create a map to store user statistics
+	stats := make(map[int64]*userStats)
+
+	// Count messages for each user
+	for _, msg := range messages {
+		if msg.Update.Message == nil || msg.Update.Message.From == nil {
+			continue
+		}
+
+		from := msg.Update.Message.From
+		userID := from.ID
+
+		if _, exists := stats[userID]; !exists {
+			stats[userID] = &userStats{
+				FirstName: from.FirstName,
+				LastName:  from.LastName,
+				Username:  from.Username,
+				Count:     0,
+			}
+		}
+		stats[userID].Count++
+	}
+
+	// Convert map to slice for sorting
+	rankings := make([]struct {
+		UserID int64
+		Stats  *struct {
+			FirstName string
+			LastName  string
+			Username  string
+			Count     int
+		}
+	}, 0, len(stats))
+
+	for userID, userStats := range stats {
+		rankings = append(rankings, struct {
+			UserID int64
+			Stats  *struct {
+				FirstName string
+				LastName  string
+				Username  string
+				Count     int
+			}
+		}{
+			UserID: userID,
+			Stats: &struct {
+				FirstName string
+				LastName  string
+				Username  string
+				Count     int
+			}{
+				FirstName: userStats.FirstName,
+				LastName:  userStats.LastName,
+				Username:  userStats.Username,
+				Count:     userStats.Count,
+			},
+		})
+	}
+
+	// Sort by message count (descending)
+	sort.Slice(rankings, func(i, j int) bool {
+		return rankings[i].Stats.Count > rankings[j].Stats.Count
+	})
+
+	// Build the response message
+	var response strings.Builder
+	response.WriteString("*Chat Activity Leaderboard (Last 7 Days)*\n\n")
+	response.WriteString(fmt.Sprintf("Total Messages: *%d*\n\n", len(messages)))
+
+	// Add rankings
+	for i, rank := range rankings {
+		if i >= 10 { // Only show top 10
+			break
+		}
+
+		stats := rank.Stats
+		name := stats.FirstName
+		if stats.LastName != "" {
+			name += " " + stats.LastName
+		}
+		name = bot.EscapeMarkdown(name)
+
+		username := ""
+		if stats.Username != "" {
+			username = " (@" + stats.Username + ")"
+		}
+
+		medal := ""
+		switch i {
+		case 0:
+			medal = "🥇"
+		case 1:
+			medal = "🥈"
+		case 2:
+			medal = "🥉"
+		default:
+			medal = "👤"
+		}
+
+		response.WriteString(fmt.Sprintf("%d. %s *%s*%s - %d messages\n",
+			i+1, medal, name, username, stats.Count))
+	}
+
+	// Add footer with timestamp
+	response.WriteString(fmt.Sprintf("\n_Generated at: %s_", time.Now().Format("2006-01-02 15:04:05")))
+
+	// Update the loading message with the results
+	_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
+		ChatID:    update.Message.Chat.ID,
+		MessageID: loadingMsg.ID,
+		Text:      response.String(),
+		ParseMode: models.ParseModeMarkdown,
+	})
+	if err != nil {
+		logger.Error("Failed to update message with results", "error", err)
+		return
 	}
 }
