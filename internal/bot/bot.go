@@ -44,6 +44,8 @@ func Init() error {
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/huahua", bot.MatchTypePrefix, huahuaHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/save_prompt", bot.MatchTypePrefix, savePromt)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/dns_query", bot.MatchTypePrefix, dnsQueryHandler)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/getid", bot.MatchTypeExact, getIDHandler)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/me", bot.MatchTypeExact, meHandler)
 
 	for _, config := range pullConfig {
 		b.RegisterHandler(bot.HandlerTypeMessageText, config.Command, bot.MatchTypePrefix, newPullHandler(config))
@@ -661,5 +663,61 @@ func askHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 			ChatID: update.Message.Chat.ID,
 			Text:   response,
 		})
+	}
+}
+
+func getIDHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	logger := log.FromContext(ctx)
+	logger.Info("getIDHandler",
+		"chat_id", update.Message.Chat.ID,
+	)
+
+	text := fmt.Sprintf("Chat ID: `%d`", update.Message.Chat.ID)
+
+	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:    update.Message.Chat.ID,
+		Text:      text,
+		ParseMode: models.ParseModeMarkdown,
+	})
+	if err != nil {
+		logger.Error("SendMessage error", "error", err)
+	}
+}
+
+func meHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	logger := log.FromContext(ctx)
+	logger.Info("meHandler",
+		"from", update.Message.From,
+	)
+
+	user := update.Message.From
+	var info strings.Builder
+
+	info.WriteString("User Information:\n")
+	info.WriteString(fmt.Sprintf("ID: `%d`\n", user.ID))
+	info.WriteString(fmt.Sprintf("First Name: *%s*\n", bot.EscapeMarkdown(user.FirstName)))
+
+	if user.LastName != "" {
+		info.WriteString(fmt.Sprintf("Last Name: *%s*\n", bot.EscapeMarkdown(user.LastName)))
+	}
+	if user.Username != "" {
+		info.WriteString(fmt.Sprintf("Username: @%s\n", user.Username))
+	}
+	if user.LanguageCode != "" {
+		info.WriteString(fmt.Sprintf("Language: `%s`\n", user.LanguageCode))
+	}
+	if user.IsBot {
+		info.WriteString("Type: Bot\n")
+	} else {
+		info.WriteString("Type: User\n")
+	}
+
+	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:    update.Message.Chat.ID,
+		Text:      info.String(),
+		ParseMode: models.ParseModeMarkdown,
+	})
+	if err != nil {
+		logger.Error("SendMessage error", "error", err)
 	}
 }
