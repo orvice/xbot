@@ -732,8 +732,8 @@ type userStats struct {
 }
 
 func hualaoHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	logger := log.FromContext(ctx)
-	logger.Info("hualaoHandler",
+	logger := log.FromContext(ctx).With("method", "hualaoHandler")
+	logger.Info("new hualao req",
 		"chat_id", update.Message.Chat.ID,
 	)
 
@@ -834,7 +834,7 @@ func hualaoHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 	// Build the response message
 	var response strings.Builder
-	response.WriteString("*Chat Activity Leaderboard (Last 7 Days)*\n\n")
+	response.WriteString("*Chat Activity Leaderboard \\(Last 7 Days\\)*\n\n")
 	response.WriteString(fmt.Sprintf("Total Messages: *%d*\n\n", len(messages)))
 
 	// Add rankings
@@ -852,7 +852,7 @@ func hualaoHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 		username := ""
 		if stats.Username != "" {
-			username = " (@" + stats.Username + ")"
+			username = fmt.Sprintf(" \\(@%s\\)", stats.Username)
 		}
 
 		medal := ""
@@ -867,12 +867,13 @@ func hualaoHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 			medal = "👤"
 		}
 
-		response.WriteString(fmt.Sprintf("%d. %s *%s*%s - %d messages\n",
+		response.WriteString(fmt.Sprintf("%d\\. %s *%s*%s \\- %d messages\n",
 			i+1, medal, name, username, stats.Count))
 	}
 
 	// Add footer with timestamp
-	response.WriteString(fmt.Sprintf("\n_Generated at: %s_", time.Now().Format("2006-01-02 15:04:05")))
+	response.WriteString(fmt.Sprintf("\n_Generated at: %s_",
+		bot.EscapeMarkdown(time.Now().Format("2006-01-02 15:04:05"))))
 
 	// Update the loading message with the results
 	_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
@@ -882,7 +883,8 @@ func hualaoHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		ParseMode: models.ParseModeMarkdown,
 	})
 	if err != nil {
-		logger.Error("Failed to update message with results", "error", err)
+		logger.Error("Failed to update message with results",
+			"error", err)
 		return
 	}
 }
