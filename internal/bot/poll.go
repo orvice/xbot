@@ -166,6 +166,16 @@ func PollVoteHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 	userName := fmt.Sprintf("%s  %s%s", PollAnswer.User.Username, PollAnswer.User.FirstName, PollAnswer.User.LastName)
 
+	var chatID int64 = poll.ChatID
+
+	if PollAnswer.VoterChat != nil {
+		chatID = PollAnswer.VoterChat.ID
+	}
+
+	if update.Message != nil {
+		chatID = update.Message.Chat.ID
+	}
+
 	switch poll.Type {
 	case pollTypeShit:
 		logger.Info("new shit vote",
@@ -176,17 +186,13 @@ func PollVoteHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		)
 
 		if len(PollAnswer.OptionIDs) == 0 {
-			if PollAnswer.VoterChat == nil {
-				logger.Error("VoterChat is nil")
-				return
-			}
 
 			if userName == "" {
 				userName = "匿名用户"
 			}
 
 			_, err := b.SendMessage(ctx, &bot.SendMessageParams{
-				ChatID: PollAnswer.VoterChat.ID,
+				ChatID: chatID,
 				Text:   fmt.Sprintf("🎉  %s 撤回了个拉屎投票.", userName),
 			})
 			if err != nil {
@@ -203,17 +209,12 @@ func PollVoteHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 				"userName", userName,
 			)
 
-			if PollAnswer.VoterChat == nil {
-				logger.Error("VoterChat is nil")
-				return
-			}
-
 			if userName == "" {
 				userName = "匿名用户"
 			}
 
 			resp, err := b.SendMessage(ctx, &bot.SendMessageParams{
-				ChatID: PollAnswer.VoterChat.ID,
+				ChatID: chatID,
 				Text:   fmt.Sprintf("🎉 恭喜 %s 完成今日任务！💩\n祝您排便愉快，身体健康！", userName),
 			})
 			if err != nil {
