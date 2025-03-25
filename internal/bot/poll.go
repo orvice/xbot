@@ -2,6 +2,7 @@ package bot
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"butterfly.orx.me/core/log"
@@ -12,6 +13,13 @@ import (
 
 var (
 	boolFalse = false
+)
+
+const (
+	pollTypeShit = "shit"
+
+	pullOptionYes = "Yes"
+	pullOptionNo  = "No"
 )
 
 type PollConfig struct {
@@ -26,25 +34,25 @@ var pollConfig = []PollConfig{
 		Type:    "wank",
 		Command: "/wank",
 		Title:   "✈️今天打飞机了吗?",
-		Options: []string{"Yes", "No"},
+		Options: []string{pullOptionYes, pullOptionNo},
 	},
 	{
-		Type:    "shit",
+		Type:    pollTypeShit,
 		Command: "/shit",
 		Title:   "💩今天有拉屎了吗?",
-		Options: []string{"Yes", "No"},
+		Options: []string{pullOptionYes, pullOptionNo},
 	},
 	{
 		Type:    "sex",
 		Command: "/sex",
 		Title:   "💕今天做爱了吗?",
-		Options: []string{"Yes", "No"},
+		Options: []string{pullOptionYes, pullOptionNo},
 	},
 	{
 		Type:    "workout",
 		Command: "/workout",
 		Title:   "💪今天健身了吗?",
-		Options: []string{"Yes", "No"},
+		Options: []string{pullOptionYes, pullOptionNo},
 	},
 }
 
@@ -145,13 +153,29 @@ func PollVoteHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		"pollAnswer", PollAnswer,
 	)
 
-	pull, err := dao.GetPollByID(ctx, PollAnswer.PollID)
+	poll, err := dao.GetPollByID(ctx, PollAnswer.PollID)
 	if err != nil {
 		logger.Error("GetPollByID error",
 			"error", err)
 		return
 	}
 	logger.Info("GetPollByID",
-		"poll", pull,
+		"poll", poll,
 	)
+
+	userName := fmt.Sprintf("%s  %s%s", PollAnswer.User.Username, PollAnswer.User.FirstName, PollAnswer.User.LastName)
+
+	switch poll.Type {
+	case pollTypeShit:
+		if PollAnswer.OptionIDs[0] == 0 { // Yes option
+			_, err = b.SendMessage(ctx, &bot.SendMessageParams{
+				ChatID: update.Message.Chat.ID,
+				Text:   fmt.Sprintf("🎉 恭喜 %s 完成今日任务！💩\n祝您排便愉快，身体健康！", userName),
+			})
+			if err != nil {
+				logger.Error("Failed to send congratulation message",
+					"error", err)
+			}
+		}
+	}
 }
