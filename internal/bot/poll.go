@@ -171,6 +171,7 @@ func PollVoteHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 			"poll", poll,
 			"PollAnswer", PollAnswer,
 			"userName", userName,
+			"voter.chat", PollAnswer.VoterChat,
 		)
 
 		if len(PollAnswer.OptionIDs) == 0 {
