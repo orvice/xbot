@@ -17,7 +17,7 @@ type Poll struct {
 	MessageID int64
 	CreatedAt int64
 	UpdatedAt int64
-	PollID    string
+	PollID    string `bson:"poll_id"`
 	Poll      *models.Poll
 }
 
@@ -43,4 +43,21 @@ func GetPollByTypeAndDate(ctx context.Context, PollType string, date string) (*P
 		return nil, false, err
 	}
 	return &Poll, true, nil
+}
+
+func GetPollByID(ctx context.Context, pollID string) (*Poll, error) {
+	objectID, err := bson.ObjectIDFromHex(pollID)
+	if err != nil {
+		return nil, err
+	}
+
+	var poll Poll
+	err = pollColl.FindOne(ctx, bson.M{"poll_id": objectID}).Decode(&poll)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &poll, nil
 }

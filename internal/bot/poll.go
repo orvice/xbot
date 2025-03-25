@@ -141,7 +141,17 @@ func newPollHandler(config PollConfig) func(ctx context.Context, b *bot.Bot, upd
 func PollVoteHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	PollAnswer := update.PollAnswer
 	logger := log.FromContext(ctx).With("method", "PollVoteHandler")
-	logger.Info("PollVoteHandler",
+	logger.Info("new poll answer",
 		"pollAnswer", PollAnswer,
+	)
+
+	pull, err := dao.GetPollByID(ctx, PollAnswer.PollID)
+	if err != nil {
+		logger.Error("GetPollByID error",
+			"error", err)
+		return
+	}
+	logger.Info("GetPollByID",
+		"poll", pull,
 	)
 }
