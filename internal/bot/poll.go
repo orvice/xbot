@@ -178,8 +178,9 @@ func PollVoteHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 				"PollAnswer", PollAnswer,
 				"userName", userName,
 			)
+
 			resp, err := b.SendMessage(ctx, &bot.SendMessageParams{
-				ChatID: update.Message.Chat.ID,
+				ChatID: PollAnswer.VoterChat.ID,
 				Text:   fmt.Sprintf("🎉 恭喜 %s 完成今日任务！💩\n祝您排便愉快，身体健康！", userName),
 			})
 			if err != nil {
