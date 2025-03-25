@@ -10,7 +10,7 @@ import (
 func Router(m *gin.Engine) {
 	m.Any("/v1/webhook", func(c *gin.Context) {
 		logger := log.FromContext(c.Request.Context())
-		logger.Info("new webhook request",
+		logger.Debug("new webhook request",
 			"header", c.Request.Header,
 			"method", c.Request.Method,
 		)
