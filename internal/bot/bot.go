@@ -88,7 +88,7 @@ func helloHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	logger := log.FromContext(ctx)
-	logger.Info("defaultHandler",
+	logger.Debug("defaultHandler",
 		"update", update.ID,
 	)
 
