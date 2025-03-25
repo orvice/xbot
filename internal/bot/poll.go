@@ -190,6 +190,15 @@ func PollVoteHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 				"userName", userName,
 			)
 
+			if PollAnswer.VoterChat == nil {
+				logger.Error("VoterChat is nil")
+				return
+			}
+
+			if userName == "" {
+				userName = "匿名用户"
+			}
+
 			resp, err := b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID: PollAnswer.VoterChat.ID,
 				Text:   fmt.Sprintf("🎉 恭喜 %s 完成今日任务！💩\n祝您排便愉快，身体健康！", userName),
