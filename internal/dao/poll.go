@@ -46,13 +46,9 @@ func GetPollByTypeAndDate(ctx context.Context, PollType string, date string) (*P
 }
 
 func GetPollByID(ctx context.Context, pollID string) (*Poll, error) {
-	objectID, err := bson.ObjectIDFromHex(pollID)
-	if err != nil {
-		return nil, err
-	}
 
 	var poll Poll
-	err = pollColl.FindOne(ctx, bson.M{"poll_id": objectID}).Decode(&poll)
+	err := pollColl.FindOne(ctx, bson.M{"poll_id": pollID}).Decode(&poll)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, nil
