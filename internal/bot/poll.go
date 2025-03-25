@@ -175,6 +175,7 @@ func PollVoteHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		if PollAnswer.OptionIDs[0] == 0 { // Yes option
 			logger.Info("new shit vote yes",
 				"poll", poll,
+				"user", PollAnswer.User,
 				"PollAnswer", PollAnswer,
 				"userName", userName,
 			)
