@@ -167,7 +167,17 @@ func PollVoteHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 	switch poll.Type {
 	case pollTypeShit:
+		logger.Info("new shit vote",
+			"poll", poll,
+			"PollAnswer", PollAnswer,
+			"userName", userName,
+		)
 		if PollAnswer.OptionIDs[0] == 0 { // Yes option
+			logger.Info("new shit vote yes",
+				"poll", poll,
+				"PollAnswer", PollAnswer,
+				"userName", userName,
+			)
 			_, err = b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID: update.Message.Chat.ID,
 				Text:   fmt.Sprintf("🎉 恭喜 %s 完成今日任务！💩\n祝您排便愉快，身体健康！", userName),
