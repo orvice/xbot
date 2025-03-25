@@ -178,14 +178,18 @@ func PollVoteHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 				"PollAnswer", PollAnswer,
 				"userName", userName,
 			)
-			_, err = b.SendMessage(ctx, &bot.SendMessageParams{
+			resp, err := b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID: update.Message.Chat.ID,
 				Text:   fmt.Sprintf("🎉 恭喜 %s 完成今日任务！💩\n祝您排便愉快，身体健康！", userName),
 			})
 			if err != nil {
 				logger.Error("Failed to send congratulation message",
 					"error", err)
+				return
 			}
+			logger.Info("send success",
+				"resp", resp,
+			)
 		}
 	}
 }
