@@ -14,14 +14,14 @@ var (
 	boolFalse = false
 )
 
-type PullConfig struct {
+type PollConfig struct {
 	Type    string
 	Command string
 	Title   string
 	Options []string
 }
 
-var pullConfig = []PullConfig{
+var pollConfig = []PollConfig{
 	{
 		Type:    "wank",
 		Command: "/wank",
@@ -48,37 +48,37 @@ var pullConfig = []PullConfig{
 	},
 }
 
-func newPullHandler(config PullConfig) func(ctx context.Context, b *bot.Bot, update *models.Update) {
+func newPollHandler(config PollConfig) func(ctx context.Context, b *bot.Bot, update *models.Update) {
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
-		logger := log.FromContext(ctx).With("method", "pullHandler")
-		logger.Info("newPullHandler",
+		logger := log.FromContext(ctx).With("method", "PollHandler")
+		logger.Info("newPollHandler",
 			"cmd", config.Command,
 			"type", config.Type,
 		)
 		date := time.Now().Format("2006-01-02")
 
-		pull, exist, err := dao.GetPullByTypeAndDate(ctx, config.Type, date)
+		Poll, exist, err := dao.GetPollByTypeAndDate(ctx, config.Type, date)
 		if nil != err {
-			logger.Error("GetPullByTypeAndDate error",
+			logger.Error("GetPollByTypeAndDate error",
 				"error", err)
 			return
 		}
 		if exist {
-			logger.Info("Pull already exists, forwarding message",
+			logger.Info("Poll already exists, forwarding message",
 				"date", date,
 				"type", config.Type,
-				"messageID", pull.MessageID)
+				"messageID", Poll.MessageID)
 
-			// Forward the message if pull exists
-			if pull.MessageID != 0 {
+			// Forward the message if Poll exists
+			if Poll.MessageID != 0 {
 				// Get chat ID from the update
 				chatID := update.Message.Chat.ID
 
 				// Forward the existing message
 				_, err = b.ForwardMessage(ctx, &bot.ForwardMessageParams{
 					ChatID:     chatID,
-					FromChatID: pull.ChatID,
-					MessageID:  int(pull.MessageID),
+					FromChatID: Poll.ChatID,
+					MessageID:  int(Poll.MessageID),
 				})
 
 				if err != nil {
@@ -89,8 +89,8 @@ func newPullHandler(config PullConfig) func(ctx context.Context, b *bot.Bot, upd
 			return
 		}
 
-		// Create new pull if it doesn't exist
-		logger.Info("Creating new pull",
+		// Create new Poll if it doesn't exist
+		logger.Info("Creating new Poll",
 			"date", date,
 			"type", config.Type)
 
@@ -114,24 +114,34 @@ func newPullHandler(config PullConfig) func(ctx context.Context, b *bot.Bot, upd
 			return
 		}
 
-		// Create and save the new pull
-		newPull := dao.Pull{
+		// Create and save the new Poll
+		newPoll := dao.Poll{
 			Type:      config.Type,
 			Date:      date,
 			MessageID: int64(message.ID),
 			ChatID:    update.Message.Chat.ID,
+			Poll:      message.Poll,
+			PollID:    message.Poll.ID,
 		}
 
-		err = dao.SavePull(ctx, newPull)
+		err = dao.SavePoll(ctx, newPoll)
 		if err != nil {
-			logger.Error("Failed to save pull",
+			logger.Error("Failed to save Poll",
 				"error", err)
 			return
 		}
 
-		logger.Info("Successfully created new pull",
+		logger.Info("Successfully created new Poll",
 			"type", config.Type,
 			"date", date,
 			"messageID", message.ID)
 	}
+}
+
+func PollVoteHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	PollAnswer := update.PollAnswer
+	logger := log.FromContext(ctx).With("method", "PollVoteHandler")
+	logger.Info("PollVoteHandler",
+		"pollAnswer", PollAnswer,
+	)
 }

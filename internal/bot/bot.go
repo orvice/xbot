@@ -49,8 +49,8 @@ func Init() error {
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/me", bot.MatchTypeExact, meHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/hualao", bot.MatchTypeExact, hualaoHandler)
 
-	for _, config := range pullConfig {
-		b.RegisterHandler(bot.HandlerTypeMessageText, config.Command, bot.MatchTypePrefix, newPullHandler(config))
+	for _, config := range pollConfig {
+		b.RegisterHandler(bot.HandlerTypeMessageText, config.Command, bot.MatchTypePrefix, newPollHandler(config))
 	}
 
 	resp, err := b.SetWebhook(ctx, &bot.SetWebhookParams{
@@ -91,6 +91,11 @@ func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	logger.Info("defaultHandler",
 		"update", update.ID,
 	)
+
+	if update.PollAnswer != nil {
+		PollVoteHandler(ctx, b, update)
+	}
+
 	// save to store
 	err := dao.GetMessageStorage().SaveMessage(ctx, &dao.Message{
 		Update: update,
