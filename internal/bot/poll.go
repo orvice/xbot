@@ -150,6 +150,7 @@ func PollVoteHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	PollAnswer := update.PollAnswer
 	logger := log.FromContext(ctx).With("method", "PollVoteHandler")
 	logger.Info("new poll answer",
+		"update", update,
 		"pollAnswer", PollAnswer,
 	)
 
