@@ -174,6 +174,10 @@ func PollVoteHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		)
 
 		if len(PollAnswer.OptionIDs) == 0 {
+			b.SendMessage(ctx, &bot.SendMessageParams{
+				ChatID: PollAnswer.VoterChat.ID,
+				Text:   fmt.Sprintf("🎉  %s 撤回了个拉屎投票.", userName),
+			})
 			return
 		}
 
