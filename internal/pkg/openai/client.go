@@ -16,6 +16,9 @@ var (
 func Init() error {
 	var err error
 	client, err = newClient()
+	if err != nil {
+		return err
+	}
 	pictureClient, err = newPictureClient()
 	return err
 }
