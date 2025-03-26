@@ -17,6 +17,7 @@ import (
 	"github.com/go-telegram/bot/models"
 	"go.orx.me/xbot/internal/conf"
 	"go.orx.me/xbot/internal/dao"
+	"go.orx.me/xbot/internal/metrics"
 	"go.orx.me/xbot/internal/pkg/openai"
 )
 
@@ -94,6 +95,12 @@ func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 	if update.PollAnswer != nil {
 		PollVoteHandler(ctx, b, update)
+	}
+
+	// Increment message counter for this chat
+	if update.Message != nil {
+		chatID := fmt.Sprintf("%d", update.Message.Chat.ID)
+		metrics.MessageCounter.WithLabelValues(chatID).Inc()
 	}
 
 	// save to store
