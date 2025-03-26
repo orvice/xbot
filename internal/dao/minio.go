@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.orx.me/xbot/internal/conf"
 )
 
@@ -17,8 +19,9 @@ var (
 func NewMinioClient() (*minio.Client, error) {
 	config := conf.Conf.S3
 	client, err := minio.New(config.Endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(config.AccessKey, config.SecretKey, ""),
-		Secure: true,
+		Creds:     credentials.NewStaticV4(config.AccessKey, config.SecretKey, ""),
+		Secure:    true,
+		Transport: otelhttp.NewTransport(http.DefaultTransport),
 	})
 	if err != nil {
 		return nil, err

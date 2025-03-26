@@ -12,6 +12,7 @@ require (
 	github.com/prometheus/client_golang v1.20.4
 	github.com/sashabaranov/go-openai v1.37.0
 	go.mongodb.org/mongo-driver/v2 v2.0.0
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.60.0
 )
 
 require (
@@ -26,6 +27,7 @@ require (
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fatih/color v1.17.0 // indirect
+	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.8 // indirect
 	github.com/gin-contrib/sse v1.0.0 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
