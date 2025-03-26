@@ -1,14 +1,10 @@
+version: "2"
+
 run:
   timeout: 5m
   modules-download-mode: readonly
   tests: false
-issues:
-  exclude-dirs:
-    - pkg/ent
-    - pkg/proto
 linters:
-  disable-all: true
-  fast: false
   enable:
     - bodyclose
     - dogsled
@@ -48,20 +44,3 @@ linters:
   # - testpackage
   # - stylrcheck
   # - wsl
-
-linters-settings:
-  whitespace:
-    multi-func: true
-  lll:
-    line-length: 160
-  mnd:
-    # don't include the "operation", "argument" and "assign"
-    checks: 
-      - case
-      - condition
-      - return
-  goconst:
-    ignore-tests: true
-  gocyclo:
-    # recommend 10-20
-    min-complexity: 30
