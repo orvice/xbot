@@ -1,5 +1,7 @@
 butterfly.orx.me/core v0.0.0-20250130070915-56b92cf89b83 h1:ZeBxk+mkEmBPtZdVXHGBNObBJX+o1rX4a28JanVaJIM=
 butterfly.orx.me/core v0.0.0-20250130070915-56b92cf89b83/go.mod h1:LnjM88HBBE9mJOGyy3xRWaEAbkQTtlvjRY6ARzmIvrI=
+butterfly.orx.me/core v0.0.0-20250326143911-517c758b7ffb h1:w6rBP6fVWI+PLsvxg7qms1zWChOeUq8pWCBWIZPEwQA=
+butterfly.orx.me/core v0.0.0-20250326143911-517c758b7ffb/go.mod h1:LnjM88HBBE9mJOGyy3xRWaEAbkQTtlvjRY6ARzmIvrI=
 filippo.io/edwards25519 v1.1.0 h1:FNf4tywRC1HmFuKW5xopWpigGjJKiJSV0Cqo0cJWDaA=
 filippo.io/edwards25519 v1.1.0/go.mod h1:BxyFTGdWcka3PhytdK4V28tE5sGfRvvvRV7EaN4VDT4=
 github.com/DataDog/datadog-go v3.2.0+incompatible/go.mod h1:LButxg5PwREeZtORoXG3tL4fMGNddJ+vMq1mwgfaqoQ=

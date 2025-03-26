@@ -16,7 +16,10 @@ var (
 )
 
 const (
-	pollTypeShit = "shit"
+	pollTypeShit    = "shit"
+	pollTypeWank    = "wank"
+	pollTypeSex     = "sex"
+	pollTypeWorkout = "workout"
 
 	pullOptionYes = "Yes"
 	pullOptionNo  = "No"
@@ -31,7 +34,7 @@ type PollConfig struct {
 
 var pollConfig = []PollConfig{
 	{
-		Type:    "wank",
+		Type:    pollTypeWank,
 		Command: "/wank",
 		Title:   "✈️今天打飞机了吗?",
 		Options: []string{pullOptionYes, pullOptionNo},
@@ -39,17 +42,17 @@ var pollConfig = []PollConfig{
 	{
 		Type:    pollTypeShit,
 		Command: "/shit",
-		Title:   "💩今天有拉屎了吗?",
+		Title:   "💩今天拉屎了吗?",
 		Options: []string{pullOptionYes, pullOptionNo},
 	},
 	{
-		Type:    "sex",
+		Type:    pollTypeSex,
 		Command: "/sex",
 		Title:   "💕今天做爱了吗?",
 		Options: []string{pullOptionYes, pullOptionNo},
 	},
 	{
-		Type:    "workout",
+		Type:    pollTypeWorkout,
 		Command: "/workout",
 		Title:   "💪今天健身了吗?",
 		Options: []string{pullOptionYes, pullOptionNo},
