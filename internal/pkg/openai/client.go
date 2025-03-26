@@ -63,6 +63,11 @@ func ChatCompletionWithModels(ctx context.Context, models []string, promptString
 
 		// If successful, return the result
 		if err == nil {
+			if len(resp.Choices) == 0 {
+				logger.Info("ChatCompletion returned no choices",
+					"model", currentModel)
+				continue
+			}
 			logger.Info("Successfully used model",
 				"model", currentModel,
 				"responseLength", len(resp.Choices[0].Message.Content),
