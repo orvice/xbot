@@ -559,15 +559,17 @@ func processChatHistory(ctx context.Context, b *bot.Bot, update *models.Update, 
 			ChatID:    update.Message.Chat.ID,
 			MessageID: loadingMsg.ID,
 			Text:      text,
+			ParseMode: models.ParseModeMarkdown,
 			Entities:  entities,
 		})
 		if err != nil {
 			logger.Error("Failed to edit message", "error", err)
 			// If editing fails, send a new message
 			b.SendMessage(ctx, &bot.SendMessageParams{
-				ChatID:   update.Message.Chat.ID,
-				Text:     text,
-				Entities: entities,
+				ChatID:    update.Message.Chat.ID,
+				Text:      text,
+				ParseMode: models.ParseModeMarkdown,
+				Entities:  entities,
 			})
 		}
 	} else {
