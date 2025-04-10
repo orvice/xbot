@@ -188,7 +188,10 @@ func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		"resp", resp,
 	)
 
-	formattedResp := fmt.Sprintf("Model: %s Duration: %s\n\n%s", conf.Conf.OpenAI.Model, duration, resp)
+	formattedResp := fmt.Sprintf("*Model:* `%s`\n*Duration:* `%s`\n\n%s",
+		bot.EscapeMarkdown(conf.Conf.OpenAI.Model),
+		bot.EscapeMarkdown(duration.String()),
+		bot.EscapeMarkdown(resp))
 
 	if loadingMsg != nil {
 		// Update the loading message with the response
@@ -196,13 +199,15 @@ func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 			ChatID:    update.Message.Chat.ID,
 			MessageID: loadingMsg.ID,
 			Text:      formattedResp,
+			ParseMode: models.ParseModeMarkdown,
 		})
 		if err != nil {
 			logger.Error("Failed to edit message", "error", err)
 			// If editing fails, send a new message
 			sendResp, err := b.SendMessage(ctx, &bot.SendMessageParams{
-				ChatID: update.Message.Chat.ID,
-				Text:   formattedResp,
+				ChatID:    update.Message.Chat.ID,
+				Text:      formattedResp,
+				ParseMode: models.ParseModeMarkdown,
 				ReplyParameters: &models.ReplyParameters{
 					ChatID:                   update.Message.Chat.ID,
 					MessageID:                update.Message.ID,
@@ -219,8 +224,9 @@ func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	} else {
 		// If no loading message was sent, send a new message with the response
 		sendResp, err := b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   formattedResp,
+			ChatID:    update.Message.Chat.ID,
+			Text:      formattedResp,
+			ParseMode: models.ParseModeMarkdown,
 			ReplyParameters: &models.ReplyParameters{
 				ChatID:                   update.Message.Chat.ID,
 				MessageID:                update.Message.ID,
@@ -846,8 +852,8 @@ func hualaoHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 	// Build the response message
 	var response strings.Builder
-	response.WriteString("*Chat Activity Leaderboard \\(Last 7 Days\\)*\n\n")
-	response.WriteString(fmt.Sprintf("Total Messages: *%d*\n\n", len(messages)))
+	response.WriteString("*Chat Activity Leaderboard (Last 7 Days)* \n")
+	response.WriteString(fmt.Sprintf("Total Messages: *%d*\n ", len(messages)))
 
 	// Add rankings
 	for i, rank := range rankings {
