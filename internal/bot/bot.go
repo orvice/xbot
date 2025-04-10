@@ -191,7 +191,7 @@ func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	formattedResp := fmt.Sprintf("*Model:* `%s`\n*Duration:* `%s`\n\n%s",
 		bot.EscapeMarkdown(conf.Conf.OpenAI.Model),
 		bot.EscapeMarkdown(duration.String()),
-		bot.EscapeMarkdown(resp))
+		resp)
 
 	if loadingMsg != nil {
 		// Update the loading message with the response
@@ -675,7 +675,7 @@ func askHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 			ChatID:    update.Message.Chat.ID,
 			MessageID: loadingMsg.ID,
 			Text:      response,
-			ParseMode: "Markdown",
+			ParseMode: models.ParseModeMarkdown,
 		})
 		if err != nil {
 			logger.Error("Failed to edit message", "error", err)
