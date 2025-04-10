@@ -502,9 +502,9 @@ func processChatHistory(ctx context.Context, b *bot.Bot, update *models.Update, 
 	// Format the response
 	response := fmt.Sprintf("%s\n\n*Model:* `%s`\n*Processed Messages:* `%d`\n*Duration:* `%s`\n\n%s",
 		responseTitle,
-		bot.EscapeMarkdown(usedModel),
+		usedModel,
 		len(messages),
-		bot.EscapeMarkdown(duration.Round(time.Millisecond).String()),
+		duration.Round(time.Millisecond).String(),
 		result)
 
 	// Edit the loading message with the result
