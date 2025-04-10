@@ -475,14 +475,14 @@ func processChatHistory(ctx context.Context, b *bot.Bot, update *models.Update, 
 	start := time.Now()
 
 	// Use models defined in config with fallback
-	models := conf.Conf.SummaryModels
-	if len(models) == 0 {
+	modelsConfig := conf.Conf.SummaryModels
+	if len(modelsConfig) == 0 {
 		// Fallback to the default model if no models defined in config
-		models = []string{conf.Conf.OpenAI.Model}
+		modelsConfig = []string{conf.Conf.OpenAI.Model}
 	}
 
 	// Call OpenAI to process the conversation with multiple model options
-	result, usedModel, err := openai.ChatCompletionWithModels(ctx, models, prompt, conversationText)
+	result, usedModel, err := openai.ChatCompletionWithModels(ctx, modelsConfig, prompt, conversationText)
 	if err != nil {
 		logger.Error("ChatCompletion error", "error", err)
 		b.SendMessage(ctx, &bot.SendMessageParams{
@@ -499,37 +499,83 @@ func processChatHistory(ctx context.Context, b *bot.Bot, update *models.Update, 
 		"chars", len(result),
 	)
 
-	// Format the response
-	response := fmt.Sprintf("%s\n\n*Model:* `%s`\n*Processed Messages:* `%d`\n*Duration:* `%s`\n\n%s",
+	// Format the response with entities
+	text := fmt.Sprintf("%s\n\nModel: %s\nProcessed Messages: %d\nDuration: %s\n\n%s",
 		responseTitle,
 		usedModel,
 		len(messages),
 		duration.Round(time.Millisecond).String(),
 		result)
 
+	// Create entities for formatting
+	entities := []models.MessageEntity{
+		// Title
+		{
+			Type:   "bold",
+			Offset: 0,
+			Length: len(responseTitle),
+		},
+		// Model label
+		{
+			Type:   "bold",
+			Offset: len(responseTitle) + 2,
+			Length: 6, // "Model:"
+		},
+		// Model value
+		{
+			Type:   "code",
+			Offset: len(responseTitle) + 9,
+			Length: len(usedModel),
+		},
+		// Processed Messages label
+		{
+			Type:   "bold",
+			Offset: len(responseTitle) + 9 + len(usedModel) + 1,
+			Length: 18, // "Processed Messages:"
+		},
+		// Processed Messages value
+		{
+			Type:   "code",
+			Offset: len(responseTitle) + 9 + len(usedModel) + 1 + 19,
+			Length: len(fmt.Sprintf("%d", len(messages))),
+		},
+		// Duration label
+		{
+			Type:   "bold",
+			Offset: len(responseTitle) + 9 + len(usedModel) + 1 + 19 + len(fmt.Sprintf("%d", len(messages))) + 1,
+			Length: 9, // "Duration:"
+		},
+		// Duration value
+		{
+			Type:   "code",
+			Offset: len(responseTitle) + 9 + len(usedModel) + 1 + 19 + len(fmt.Sprintf("%d", len(messages))) + 1 + 10,
+			Length: len(duration.Round(time.Millisecond).String()),
+		},
+	}
+
 	// Edit the loading message with the result
 	if loadingMsg != nil {
 		_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
 			ChatID:    update.Message.Chat.ID,
 			MessageID: loadingMsg.ID,
-			Text:      response,
-			ParseMode: "Markdown",
+			Text:      text,
+			Entities:  entities,
 		})
 		if err != nil {
 			logger.Error("Failed to edit message", "error", err)
 			// If editing fails, send a new message
 			b.SendMessage(ctx, &bot.SendMessageParams{
-				ChatID:    update.Message.Chat.ID,
-				Text:      response,
-				ParseMode: "Markdown",
+				ChatID:   update.Message.Chat.ID,
+				Text:     text,
+				Entities: entities,
 			})
 		}
 	} else {
 		// If no loading message was sent, send a new message with the result
 		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID:    update.Message.Chat.ID,
-			Text:      response,
-			ParseMode: "Markdown",
+			ChatID:   update.Message.Chat.ID,
+			Text:     text,
+			Entities: entities,
 		})
 	}
 }
@@ -560,7 +606,7 @@ func sumHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		loadingMsg,
 		summarizationPrompt,
 		messagePrefix,
-		"📝 *Chat Summary*",
+		"📝 Chat Summary", // Remove Markdown formatting
 		"No messages found to summarize.",
 	)
 }
@@ -581,9 +627,8 @@ func askHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	// If no question was provided, inform the user
 	if userQuestion == "" {
 		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID:    update.Message.Chat.ID,
-			Text:      "Please provide a question after the /ask command. For example: /ask What did we decide about the project deadline?",
-			ParseMode: "Markdown",
+			ChatID: update.Message.Chat.ID,
+			Text:   "Please provide a question after the /ask command. For example: /ask What did we decide about the project deadline?",
 		})
 		return
 	}
@@ -609,9 +654,8 @@ func askHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		logger.Error("GetMessageByChatID error ",
 			"error", err)
 		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID:    update.Message.Chat.ID,
-			Text:      "Error retrieving messages. Please try again later.",
-			ParseMode: "Markdown",
+			ChatID: update.Message.Chat.ID,
+			Text:   "Error retrieving messages. Please try again later.",
 		})
 		return
 	}
@@ -620,9 +664,8 @@ func askHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 	if len(messages) == 0 {
 		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID:    update.Message.Chat.ID,
-			Text:      "No chat history found to answer your question.",
-			ParseMode: "Markdown",
+			ChatID: update.Message.Chat.ID,
+			Text:   "No chat history found to answer your question.",
 		})
 		return
 	}
@@ -637,20 +680,19 @@ func askHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	start := time.Now()
 
 	// Use models defined in config with fallback
-	models := conf.Conf.SummaryModels
-	if len(models) == 0 {
+	modelsConfig := conf.Conf.SummaryModels
+	if len(modelsConfig) == 0 {
 		// Fallback to the default model if no models defined in config
-		models = []string{conf.Conf.OpenAI.Model}
+		modelsConfig = []string{conf.Conf.OpenAI.Model}
 	}
 
 	// Call OpenAI to process the conversation with multiple model options
-	result, usedModel, err := openai.ChatCompletionWithModels(ctx, models, answerPrompt, conversationText)
+	result, usedModel, err := openai.ChatCompletionWithModels(ctx, modelsConfig, answerPrompt, conversationText)
 	if err != nil {
 		logger.Error("ChatCompletion error", "error", err)
 		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID:    update.Message.Chat.ID,
-			Text:      "Error processing your question. Please try again later.",
-			ParseMode: "Markdown",
+			ChatID: update.Message.Chat.ID,
+			Text:   "Error processing your question. Please try again later.",
 		})
 		return
 	}
@@ -662,36 +704,70 @@ func askHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		"chars", len(result),
 	)
 
-	// Format the response
-	response := fmt.Sprintf("❓ *Answer to:* `%s`\n\n*Model:* `%s`\n*Processed in:* `%s`\n\n%s",
-		bot.EscapeMarkdown(userQuestion),
-		bot.EscapeMarkdown(usedModel),
-		bot.EscapeMarkdown(duration.Round(time.Millisecond).String()),
+	// Format the response with entities
+	text := fmt.Sprintf("❓ Answer to: %s\n\nModel: %s\nProcessed in: %s\n\n%s",
+		userQuestion,
+		usedModel,
+		duration.Round(time.Millisecond).String(),
 		result)
+
+	// Create entities for formatting
+	entities := []models.MessageEntity{
+		// Question title
+		{
+			Type:   "bold",
+			Offset: 0,
+			Length: 12 + len(userQuestion), // "❓ Answer to: " + question
+		},
+		// Model label
+		{
+			Type:   "bold",
+			Offset: 12 + len(userQuestion) + 2,
+			Length: 6, // "Model:"
+		},
+		// Model value
+		{
+			Type:   "code",
+			Offset: 12 + len(userQuestion) + 2 + 7,
+			Length: len(usedModel),
+		},
+		// Processed in label
+		{
+			Type:   "bold",
+			Offset: 12 + len(userQuestion) + 2 + 7 + len(usedModel) + 1,
+			Length: 12, // "Processed in:"
+		},
+		// Processed in value
+		{
+			Type:   "code",
+			Offset: 12 + len(userQuestion) + 2 + 7 + len(usedModel) + 1 + 13,
+			Length: len(duration.Round(time.Millisecond).String()),
+		},
+	}
 
 	// Edit the loading message with the result
 	if loadingMsg != nil {
 		_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
 			ChatID:    update.Message.Chat.ID,
 			MessageID: loadingMsg.ID,
-			Text:      response,
-			ParseMode: models.ParseModeMarkdown,
+			Text:      text,
+			Entities:  entities,
 		})
 		if err != nil {
 			logger.Error("Failed to edit message", "error", err)
 			// If editing fails, send a new message
 			b.SendMessage(ctx, &bot.SendMessageParams{
-				ChatID:    update.Message.Chat.ID,
-				Text:      response,
-				ParseMode: "Markdown",
+				ChatID:   update.Message.Chat.ID,
+				Text:     text,
+				Entities: entities,
 			})
 		}
 	} else {
 		// If no loading message was sent, send a new message with the result
 		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID:    update.Message.Chat.ID,
-			Text:      response,
-			ParseMode: "Markdown",
+			ChatID:   update.Message.Chat.ID,
+			Text:     text,
+			Entities: entities,
 		})
 	}
 }
