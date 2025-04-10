@@ -500,12 +500,12 @@ func processChatHistory(ctx context.Context, b *bot.Bot, update *models.Update, 
 	)
 
 	// Format the response
-	response := fmt.Sprintf("%s\n\nModel: %s\nProcessed %d messages in %s\n\n%s",
+	response := fmt.Sprintf("%s\n\n*Model:* `%s`\n*Processed Messages:* `%d`\n*Duration:* `%s`\n\n%s",
 		responseTitle,
-		usedModel,
+		bot.EscapeMarkdown(usedModel),
 		len(messages),
-		duration.Round(time.Millisecond),
-		result)
+		bot.EscapeMarkdown(duration.Round(time.Millisecond).String()),
+		bot.EscapeMarkdown(result))
 
 	// Edit the loading message with the result
 	if loadingMsg != nil {
@@ -513,20 +513,23 @@ func processChatHistory(ctx context.Context, b *bot.Bot, update *models.Update, 
 			ChatID:    update.Message.Chat.ID,
 			MessageID: loadingMsg.ID,
 			Text:      response,
+			ParseMode: "Markdown",
 		})
 		if err != nil {
 			logger.Error("Failed to edit message", "error", err)
 			// If editing fails, send a new message
 			b.SendMessage(ctx, &bot.SendMessageParams{
-				ChatID: update.Message.Chat.ID,
-				Text:   response,
+				ChatID:    update.Message.Chat.ID,
+				Text:      response,
+				ParseMode: "Markdown",
 			})
 		}
 	} else {
 		// If no loading message was sent, send a new message with the result
 		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   response,
+			ChatID:    update.Message.Chat.ID,
+			Text:      response,
+			ParseMode: "Markdown",
 		})
 	}
 }
@@ -557,7 +560,7 @@ func sumHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		loadingMsg,
 		summarizationPrompt,
 		messagePrefix,
-		"📝 **Chat Summary**",
+		"📝 *Chat Summary*",
 		"No messages found to summarize.",
 	)
 }
@@ -578,8 +581,9 @@ func askHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	// If no question was provided, inform the user
 	if userQuestion == "" {
 		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   "Please provide a question after the /ask command. For example: /ask What did we decide about the project deadline?",
+			ChatID:    update.Message.Chat.ID,
+			Text:      "Please provide a question after the /ask command. For example: /ask What did we decide about the project deadline?",
+			ParseMode: "Markdown",
 		})
 		return
 	}
@@ -605,8 +609,9 @@ func askHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		logger.Error("GetMessageByChatID error ",
 			"error", err)
 		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   "Error retrieving messages. Please try again later.",
+			ChatID:    update.Message.Chat.ID,
+			Text:      "Error retrieving messages. Please try again later.",
+			ParseMode: "Markdown",
 		})
 		return
 	}
@@ -615,8 +620,9 @@ func askHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 	if len(messages) == 0 {
 		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   "No chat history found to answer your question.",
+			ChatID:    update.Message.Chat.ID,
+			Text:      "No chat history found to answer your question.",
+			ParseMode: "Markdown",
 		})
 		return
 	}
@@ -642,8 +648,9 @@ func askHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	if err != nil {
 		logger.Error("ChatCompletion error", "error", err)
 		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   "Error processing your question. Please try again later.",
+			ChatID:    update.Message.Chat.ID,
+			Text:      "Error processing your question. Please try again later.",
+			ParseMode: "Markdown",
 		})
 		return
 	}
@@ -656,11 +663,11 @@ func askHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	)
 
 	// Format the response
-	response := fmt.Sprintf("❓ **Answer to: %s**\n\nModel: %s\nProcessed in %s\n\n%s",
-		userQuestion,
-		usedModel,
-		duration.Round(time.Millisecond),
-		result)
+	response := fmt.Sprintf("❓ *Answer to:* `%s`\n\n*Model:* `%s`\n*Processed in:* `%s`\n\n%s",
+		bot.EscapeMarkdown(userQuestion),
+		bot.EscapeMarkdown(usedModel),
+		bot.EscapeMarkdown(duration.Round(time.Millisecond).String()),
+		bot.EscapeMarkdown(result))
 
 	// Edit the loading message with the result
 	if loadingMsg != nil {
@@ -668,20 +675,23 @@ func askHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 			ChatID:    update.Message.Chat.ID,
 			MessageID: loadingMsg.ID,
 			Text:      response,
+			ParseMode: "Markdown",
 		})
 		if err != nil {
 			logger.Error("Failed to edit message", "error", err)
 			// If editing fails, send a new message
 			b.SendMessage(ctx, &bot.SendMessageParams{
-				ChatID: update.Message.Chat.ID,
-				Text:   response,
+				ChatID:    update.Message.Chat.ID,
+				Text:      response,
+				ParseMode: "Markdown",
 			})
 		}
 	} else {
 		// If no loading message was sent, send a new message with the result
 		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   response,
+			ChatID:    update.Message.Chat.ID,
+			Text:      response,
+			ParseMode: "Markdown",
 		})
 	}
 }
