@@ -505,7 +505,7 @@ func processChatHistory(ctx context.Context, b *bot.Bot, update *models.Update, 
 		bot.EscapeMarkdown(usedModel),
 		len(messages),
 		bot.EscapeMarkdown(duration.Round(time.Millisecond).String()),
-		bot.EscapeMarkdown(result))
+		result)
 
 	// Edit the loading message with the result
 	if loadingMsg != nil {
@@ -667,7 +667,7 @@ func askHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		bot.EscapeMarkdown(userQuestion),
 		bot.EscapeMarkdown(usedModel),
 		bot.EscapeMarkdown(duration.Round(time.Millisecond).String()),
-		bot.EscapeMarkdown(result))
+		result)
 
 	// Edit the loading message with the result
 	if loadingMsg != nil {
