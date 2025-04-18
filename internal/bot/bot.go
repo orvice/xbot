@@ -191,7 +191,7 @@ func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	formattedResp := fmt.Sprintf("*Model:* `%s`\n*Duration:* `%s`\n\n%s",
 		bot.EscapeMarkdown(conf.Conf.OpenAI.Model),
 		bot.EscapeMarkdown(duration.String()),
-		resp)
+		bot.EscapeMarkdown(resp))
 
 	if loadingMsg != nil {
 		// Update the loading message with the response
@@ -505,7 +505,7 @@ func processChatHistory(ctx context.Context, b *bot.Bot, update *models.Update, 
 		bot.EscapeMarkdown(usedModel),
 		len(messages),
 		duration.Round(time.Millisecond).String(),
-		result)
+		bot.EscapeMarkdown(result))
 
 	// Edit the loading message with the result
 	if loadingMsg != nil {
@@ -663,7 +663,7 @@ func askHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		userQuestion,
 		bot.EscapeMarkdown(usedModel),
 		duration.Round(time.Millisecond).String(),
-		result)
+		bot.EscapeMarkdown(result))
 
 	// Edit the loading message with the result
 	if loadingMsg != nil {
