@@ -507,52 +507,6 @@ func processChatHistory(ctx context.Context, b *bot.Bot, update *models.Update, 
 		duration.Round(time.Millisecond).String(),
 		result)
 
-	// Create entities for formatting
-	entities := []models.MessageEntity{
-		// Title
-		{
-			Type:   "bold",
-			Offset: 0,
-			Length: len(responseTitle),
-		},
-		// Model label
-		{
-			Type:   "bold",
-			Offset: len(responseTitle) + 2,
-			Length: 6, // "Model:"
-		},
-		// Model value
-		{
-			Type:   "code",
-			Offset: len(responseTitle) + 9,
-			Length: len(usedModel),
-		},
-		// Processed Messages label
-		{
-			Type:   "bold",
-			Offset: len(responseTitle) + 9 + len(usedModel) + 1,
-			Length: 18, // "Processed Messages:"
-		},
-		// Processed Messages value
-		{
-			Type:   "code",
-			Offset: len(responseTitle) + 9 + len(usedModel) + 1 + 19,
-			Length: len(fmt.Sprintf("%d", len(messages))),
-		},
-		// Duration label
-		{
-			Type:   "bold",
-			Offset: len(responseTitle) + 9 + len(usedModel) + 1 + 19 + len(fmt.Sprintf("%d", len(messages))) + 1,
-			Length: 9, // "Duration:"
-		},
-		// Duration value
-		{
-			Type:   "code",
-			Offset: len(responseTitle) + 9 + len(usedModel) + 1 + 19 + len(fmt.Sprintf("%d", len(messages))) + 1 + 10,
-			Length: len(duration.Round(time.Millisecond).String()),
-		},
-	}
-
 	// Edit the loading message with the result
 	if loadingMsg != nil {
 		_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
@@ -560,7 +514,6 @@ func processChatHistory(ctx context.Context, b *bot.Bot, update *models.Update, 
 			MessageID: loadingMsg.ID,
 			Text:      text,
 			ParseMode: models.ParseModeMarkdown,
-			Entities:  entities,
 		})
 		if err != nil {
 			logger.Error("Failed to edit message", "error", err)
@@ -569,15 +522,14 @@ func processChatHistory(ctx context.Context, b *bot.Bot, update *models.Update, 
 				ChatID:    update.Message.Chat.ID,
 				Text:      text,
 				ParseMode: models.ParseModeMarkdown,
-				Entities:  entities,
 			})
 		}
 	} else {
 		// If no loading message was sent, send a new message with the result
 		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID:   update.Message.Chat.ID,
-			Text:     text,
-			Entities: entities,
+			ChatID:    update.Message.Chat.ID,
+			Text:      text,
+			ParseMode: models.ParseModeMarkdown,
 		})
 	}
 }
@@ -713,63 +665,29 @@ func askHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		duration.Round(time.Millisecond).String(),
 		result)
 
-	// Create entities for formatting
-	entities := []models.MessageEntity{
-		// Question title
-		{
-			Type:   "bold",
-			Offset: 0,
-			Length: 12 + len(userQuestion), // "❓ Answer to: " + question
-		},
-		// Model label
-		{
-			Type:   "bold",
-			Offset: 12 + len(userQuestion) + 2,
-			Length: 6, // "Model:"
-		},
-		// Model value
-		{
-			Type:   "code",
-			Offset: 12 + len(userQuestion) + 2 + 7,
-			Length: len(usedModel),
-		},
-		// Processed in label
-		{
-			Type:   "bold",
-			Offset: 12 + len(userQuestion) + 2 + 7 + len(usedModel) + 1,
-			Length: 12, // "Processed in:"
-		},
-		// Processed in value
-		{
-			Type:   "code",
-			Offset: 12 + len(userQuestion) + 2 + 7 + len(usedModel) + 1 + 13,
-			Length: len(duration.Round(time.Millisecond).String()),
-		},
-	}
-
 	// Edit the loading message with the result
 	if loadingMsg != nil {
 		_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
 			ChatID:    update.Message.Chat.ID,
 			MessageID: loadingMsg.ID,
 			Text:      text,
-			Entities:  entities,
+			ParseMode: models.ParseModeMarkdown,
 		})
 		if err != nil {
 			logger.Error("Failed to edit message", "error", err)
 			// If editing fails, send a new message
 			b.SendMessage(ctx, &bot.SendMessageParams{
-				ChatID:   update.Message.Chat.ID,
-				Text:     text,
-				Entities: entities,
+				ChatID:    update.Message.Chat.ID,
+				Text:      text,
+				ParseMode: models.ParseModeMarkdown,
 			})
 		}
 	} else {
 		// If no loading message was sent, send a new message with the result
 		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID:   update.Message.Chat.ID,
-			Text:     text,
-			Entities: entities,
+			ChatID:    update.Message.Chat.ID,
+			Text:      text,
+			ParseMode: models.ParseModeMarkdown,
 		})
 	}
 }
