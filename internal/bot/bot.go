@@ -500,9 +500,9 @@ func processChatHistory(ctx context.Context, b *bot.Bot, update *models.Update, 
 	)
 
 	// Format the response with entities
-	text := fmt.Sprintf("%s\n\nModel: %s\nProcessed Messages: %d\nDuration: %s\n\n%s",
+	text := fmt.Sprintf("%s\n\nModel: `%s`\nProcessed Messages: %d\nDuration: %s\n\n%s",
 		responseTitle,
-		usedModel,
+		bot.EscapeMarkdown(usedModel),
 		len(messages),
 		duration.Round(time.Millisecond).String(),
 		result)
@@ -659,9 +659,9 @@ func askHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	)
 
 	// Format the response with entities
-	text := fmt.Sprintf("❓ Answer to: %s\n\nModel: %s\nProcessed in: %s\n\n%s",
+	text := fmt.Sprintf("❓ Answer to: %s\n\nModel: `%s`\nProcessed in: %s\n\n%s",
 		userQuestion,
-		usedModel,
+		bot.EscapeMarkdown(usedModel),
 		duration.Round(time.Millisecond).String(),
 		result)
 
