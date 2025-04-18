@@ -544,8 +544,9 @@ func sumHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 	// Send a loading message to the user
 	loadingMsg, err := b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: update.Message.Chat.ID,
-		Text:   "Summarizing chat messages...",
+		ChatID:    update.Message.Chat.ID,
+		Text:      "Summarizing chat messages...",
+		ParseMode: models.ParseModeMarkdown,
 	})
 	if err != nil {
 		logger.Error("Failed to send loading message", "error", err)
