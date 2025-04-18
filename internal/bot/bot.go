@@ -189,9 +189,10 @@ func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	)
 
 	formattedResp := fmt.Sprintf("*Model:* `%s`\n*Duration:* `%s`\n\n%s",
-		bot.EscapeMarkdown(conf.Conf.OpenAI.Model),
-		bot.EscapeMarkdown(duration.String()),
-		bot.EscapeMarkdown(resp))
+		conf.Conf.OpenAI.Model,
+		duration.String(),
+		resp)
+	formattedResp = bot.EscapeMarkdown(formattedResp)
 
 	if loadingMsg != nil {
 		// Update the loading message with the response
@@ -502,10 +503,11 @@ func processChatHistory(ctx context.Context, b *bot.Bot, update *models.Update, 
 	// Format the response with entities
 	text := fmt.Sprintf("%s\n\nModel: `%s`\nProcessed Messages: %d\nDuration: %s\n\n%s",
 		responseTitle,
-		bot.EscapeMarkdown(usedModel),
+		usedModel,
 		len(messages),
 		duration.Round(time.Millisecond).String(),
-		bot.EscapeMarkdown(result))
+		result)
+	text = bot.EscapeMarkdown(text)
 
 	// Edit the loading message with the result
 	if loadingMsg != nil {
@@ -661,9 +663,10 @@ func askHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	// Format the response with entities
 	text := fmt.Sprintf("❓ Answer to: %s\n\nModel: `%s`\nProcessed in: %s\n\n%s",
 		userQuestion,
-		bot.EscapeMarkdown(usedModel),
+		usedModel,
 		duration.Round(time.Millisecond).String(),
-		bot.EscapeMarkdown(result))
+		result)
+	text = bot.EscapeMarkdown(text)
 
 	// Edit the loading message with the result
 	if loadingMsg != nil {
@@ -898,6 +901,9 @@ func hualaoHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	// Add footer with timestamp
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
 	response.WriteString(fmt.Sprintf("\n\n_Generated at %s_", timestamp))
+
+	// Format the response with entities
+	response.String()
 
 	// Update the loading message with the results
 	_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
