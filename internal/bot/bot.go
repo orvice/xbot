@@ -876,7 +876,7 @@ func hualaoHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 		username := ""
 		if stats.Username != "" {
-			username = fmt.Sprintf(" \\(@%s\\)", stats.Username)
+			username = fmt.Sprintf(" (@%s)", stats.Username)
 		}
 
 		medal := ""
@@ -891,13 +891,13 @@ func hualaoHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 			medal = "👤"
 		}
 
-		response.WriteString(fmt.Sprintf("%d\\. %s *%s*%s \\- %d messages\n",
+		response.WriteString(fmt.Sprintf("%d. %s *%s*%s - %d messages\n",
 			i+1, medal, name, username, stats.Count))
 	}
 
-	// Add footer with timestamp - fix the escaping
-	timestamp := time.Now().Format("2006\\-01\\-02 15:04:05")
-	response.WriteString(fmt.Sprintf("\n\n_Generated at %s_", bot.EscapeMarkdown(timestamp)))
+	// Add footer with timestamp
+	timestamp := time.Now().Format("2006-01-02 15:04:05")
+	response.WriteString(fmt.Sprintf("\n\n_Generated at %s_", timestamp))
 
 	// Update the loading message with the results
 	_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
