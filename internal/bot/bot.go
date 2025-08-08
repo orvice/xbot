@@ -41,6 +41,7 @@ func Init() error {
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/hello", bot.MatchTypePrefix, helloHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/gpt", bot.MatchTypePrefix, gptHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "gpt", bot.MatchTypePrefix, gptHandler)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/chat", bot.MatchTypePrefix, chatHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/sum", bot.MatchTypePrefix, sumHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/ask", bot.MatchTypePrefix, askHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/huahua", bot.MatchTypePrefix, huahuaHandler)
@@ -237,6 +238,133 @@ func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		})
 		if err != nil {
 			logger.Error("SendMessage error ", "error", err)
+			return
+		}
+		logger.Info("SendMessage", "text", sendResp)
+	}
+}
+
+func chatHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	logger := log.FromContext(ctx).With("handler", "chatHandler")
+
+	message := update.Message.Text
+
+	// Remove /chat prefix
+	message = strings.TrimPrefix(message, "/chat ")
+
+	// If no message provided after /chat, show usage
+	if message == "/chat" || strings.TrimSpace(message) == "" {
+		_, err := b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID:    update.Message.Chat.ID,
+			Text:      "Usage: `/chat your message here`\nExample: `/chat Hello, how are you?`",
+			ParseMode: models.ParseModeMarkdown,
+		})
+		if err != nil {
+			logger.Error("SendMessage error", "error", err)
+		}
+		return
+	}
+
+	logger.Info("chatHandler", "message", message)
+
+	// Send a processing message first
+	loadingMsg, err := b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: update.Message.Chat.ID,
+		Text:   "Processing your message...",
+		ReplyParameters: &models.ReplyParameters{
+			ChatID:                   update.Message.Chat.ID,
+			MessageID:                update.Message.ID,
+			AllowSendingWithoutReply: true,
+			Quote:                    message,
+		},
+	})
+	if err != nil {
+		logger.Error("Failed to send loading message", "error", err)
+	}
+
+	start := time.Now()
+
+	// Call the Chat function from openai package
+	response := openai.Chat(ctx, message)
+
+	if response == "" {
+		logger.Error("Chat function returned empty response")
+		if loadingMsg != nil {
+			// Update the loading message with the error
+			_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
+				ChatID:    update.Message.Chat.ID,
+				MessageID: loadingMsg.ID,
+				Text:      "Error processing your request. Please try again.",
+			})
+			if err != nil {
+				logger.Error("Failed to edit message", "error", err)
+				// If editing fails, send a new message
+				b.SendMessage(ctx, &bot.SendMessageParams{
+					ChatID: update.Message.Chat.ID,
+					Text:   "Error processing your request. Please try again.",
+				})
+			}
+		} else {
+			b.SendMessage(ctx, &bot.SendMessageParams{
+				ChatID: update.Message.Chat.ID,
+				Text:   "Error processing your request. Please try again.",
+			})
+		}
+		return
+	}
+
+	duration := time.Since(start)
+	logger.Info("Chat completed", "duration", duration, "response_length", len(response))
+
+	// Format response with duration info
+	formattedResp := fmt.Sprintf("*Duration:* `%s`\n\n%s",
+		duration.String(),
+		response)
+	formattedResp = bot.EscapeMarkdown(formattedResp)
+
+	if loadingMsg != nil {
+		// Update the loading message with the response
+		_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
+			ChatID:    update.Message.Chat.ID,
+			MessageID: loadingMsg.ID,
+			Text:      formattedResp,
+			ParseMode: models.ParseModeMarkdown,
+		})
+		if err != nil {
+			logger.Error("Failed to edit message", "error", err)
+			// If editing fails, send a new message
+			sendResp, err := b.SendMessage(ctx, &bot.SendMessageParams{
+				ChatID:    update.Message.Chat.ID,
+				Text:      formattedResp,
+				ParseMode: models.ParseModeMarkdown,
+				ReplyParameters: &models.ReplyParameters{
+					ChatID:                   update.Message.Chat.ID,
+					MessageID:                update.Message.ID,
+					AllowSendingWithoutReply: true,
+					Quote:                    message,
+				},
+			})
+			if err != nil {
+				logger.Error("SendMessage error", "error", err)
+				return
+			}
+			logger.Info("SendMessage", "text", sendResp)
+		}
+	} else {
+		// If no loading message was sent, send a new message with the response
+		sendResp, err := b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID:    update.Message.Chat.ID,
+			Text:      formattedResp,
+			ParseMode: models.ParseModeMarkdown,
+			ReplyParameters: &models.ReplyParameters{
+				ChatID:                   update.Message.Chat.ID,
+				MessageID:                update.Message.ID,
+				AllowSendingWithoutReply: true,
+				Quote:                    message,
+			},
+		})
+		if err != nil {
+			logger.Error("SendMessage error", "error", err)
 			return
 		}
 		logger.Info("SendMessage", "text", sendResp)
@@ -902,9 +1030,6 @@ func hualaoHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	// Add footer with timestamp
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
 	response.WriteString(fmt.Sprintf("\n\n_Generated at %s_", timestamp))
-
-	// Format the response with entities
-	response.String()
 
 	// Update the loading message with the results
 	_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
