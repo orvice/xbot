@@ -15,22 +15,15 @@ import (
 type ChatRequest struct {
 	Message string `json:"message"`
 	Code    int    `json:"code"`
-}
-
-// ChatMessage represents the message in the response
-type ChatMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	ChatID  int64  `json:"chat_id"`
 }
 
 // ChatResponse represents the response structure
 type ChatResponse struct {
-	Index        int         `json:"index"`
-	Message      ChatMessage `json:"message"`
-	FinishReason string      `json:"finish_reason"`
+	Output string `json:"output"`
 }
 
-func Chat(ctx context.Context, prompt string) string {
+func Chat(ctx context.Context, chatID int64, prompt string) string {
 	logger := log.FromContext(ctx).With("method", "Chat")
 	endpoint := conf.Conf.ChatEndpoint
 
@@ -82,16 +75,19 @@ func Chat(ctx context.Context, prompt string) string {
 	}
 
 	// Parse response
-	var chatResp ChatResponse
+	var chatResp []ChatResponse
 	if err := json.Unmarshal(body, &chatResp); err != nil {
 		logger.Error("Failed to unmarshal response", "error", err, "body", string(body))
 		return ""
 	}
 
-	logger.Info("Chat request successful",
-		"response_index", chatResp.Index,
-		"finish_reason", chatResp.FinishReason,
-		"content_length", len(chatResp.Message.Content))
+	if len(chatResp) == 0 {
+		logger.Error("Empty response array")
+		return ""
+	}
 
-	return chatResp.Message.Content
+	logger.Info("Chat request successful",
+		"output_length", len(chatResp[0].Output))
+
+	return chatResp[0].Output
 }

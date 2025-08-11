@@ -285,7 +285,7 @@ func chatHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	start := time.Now()
 
 	// Call the Chat function from openai package
-	response := openai.Chat(ctx, message)
+	response := openai.Chat(ctx, update.Message.Chat.ID, message)
 
 	if response == "" {
 		logger.Error("Chat function returned empty response")
