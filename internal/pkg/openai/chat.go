@@ -32,6 +32,7 @@ func Chat(ctx context.Context, chatID int64, prompt string) string {
 		{
 			Message: prompt,
 			Code:    1,
+			ChatID:  chatID,
 		},
 	}
 
@@ -74,20 +75,26 @@ func Chat(ctx context.Context, chatID int64, prompt string) string {
 		return ""
 	}
 
-	// Parse response
-	var chatResp []ChatResponse
-	if err := json.Unmarshal(body, &chatResp); err != nil {
-		logger.Error("Failed to unmarshal response", "error", err, "body", string(body))
-		return ""
+	// Parse response - try array format first, then single object format
+	var output string
+
+	// Try to parse as array format: [{"output": "..."}]
+	var chatRespArray []ChatResponse
+	if err := json.Unmarshal(body, &chatRespArray); err == nil && len(chatRespArray) > 0 {
+		output = chatRespArray[0].Output
+		logger.Info("Chat request successful (array format)",
+			"output_length", len(output))
+	} else {
+		// Try to parse as single object format: {"output": "..."}
+		var chatRespSingle ChatResponse
+		if err := json.Unmarshal(body, &chatRespSingle); err != nil {
+			logger.Error("Failed to unmarshal response in both formats", "error", err, "body", string(body))
+			return ""
+		}
+		output = chatRespSingle.Output
+		logger.Info("Chat request successful (single object format)",
+			"output_length", len(output))
 	}
 
-	if len(chatResp) == 0 {
-		logger.Error("Empty response array")
-		return ""
-	}
-
-	logger.Info("Chat request successful",
-		"output_length", len(chatResp[0].Output))
-
-	return chatResp[0].Output
+	return output
 }
