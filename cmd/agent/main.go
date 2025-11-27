@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
+	"log/slog"
 	"os"
 
 	"google.golang.org/adk/agent"
@@ -17,13 +17,17 @@ import (
 )
 
 func main() {
+	logger := slog.Default()
+	logger.Info("Starting agent")
 	ctx := context.Background()
 
 	model, err := gemini.NewModel(ctx, "gemini-2.5-flash", &genai.ClientConfig{
 		APIKey: os.Getenv("GOOGLE_API_KEY"),
 	})
 	if err != nil {
-		log.Fatalf("Failed to create model: %v", err)
+		logger.Error("Failed to create model",
+			"error", err)
+		return
 	}
 
 	timeAgent, err := llmagent.New(llmagent.Config{
@@ -75,17 +79,20 @@ func main() {
 		StreamingMode: agent.StreamingModeSSE,
 	}
 
-	fmt.Println("Querying time for shenzhen...")
+	logger.Info("Querying time for shenzhen...")
 	for event, err := range r.Run(ctx, userID, sess.Session.ID(), userMessage, runConfig) {
 		if err != nil {
-			log.Fatalf("Error during run: %v", err)
+			logger.Error("Error during run",
+				"error", err)
+			return
 		}
 		// Process events
 		if event.Content != nil {
 			for _, part := range event.Content.Parts {
-				fmt.Printf("%s", part.Text)
+				logger.Info("Event",
+					"text", part.Text)
 			}
 		}
 	}
-	fmt.Println()
+	// fmt.Println()
 }
