@@ -64,6 +64,9 @@ type GenerateImageResponse struct {
 func (c *Client) GenerateImage(ctx context.Context, req GenerateImageRequest) (*GenerateImageResponse, error) {
 	logger := log.FromContext(ctx).With("method", "GenerateImage")
 
+	const maxRetries = 3
+	var lastErr error
+
 	// Set default values if not provided
 	temperature := req.Temperature
 	if temperature == 0 {
@@ -94,52 +97,83 @@ func (c *Client) GenerateImage(ctx context.Context, req GenerateImageRequest) (*
 		CandidateCount: 1,
 	}
 
-	// Call the Gemini API
-	resp, err := c.sdkClient.Models.GenerateContent(
-		ctx,
-		"gemini-3-pro-image-preview",
-		contents,
-		config,
-	)
-	if err != nil {
-		logger.Error("GenerateContent failed", "error", err)
-		return nil, fmt.Errorf("failed to generate content: %w", err)
-	}
-
-	// Validate response
-	if len(resp.Candidates) == 0 {
-		logger.Error("No candidates in response")
-		return nil, fmt.Errorf("no candidates in response")
-	}
-
-	candidate := resp.Candidates[0]
-	if candidate.Content == nil || len(candidate.Content.Parts) == 0 {
-		logger.Error("No parts in candidate content")
-		return nil, fmt.Errorf("no parts in candidate content")
-	}
-
-	// Extract image data
-	var imageData *genai.Blob
-	for _, part := range candidate.Content.Parts {
-		if part.InlineData != nil {
-			imageData = part.InlineData
-			break
+	// Retry loop
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		// Call the Gemini API
+		resp, err := c.sdkClient.Models.GenerateContent(
+			ctx,
+			"gemini-3-pro-image-preview",
+			contents,
+			config,
+		)
+		if err != nil {
+			lastErr = err
+			logger.Error("GenerateContent failed",
+				"error", err,
+				"attempt", attempt,
+				"maxRetries", maxRetries)
+			if attempt < maxRetries {
+				continue
+			}
+			return nil, fmt.Errorf("failed to generate content after %d attempts: %w", maxRetries, lastErr)
 		}
+
+		// Validate response
+		if len(resp.Candidates) == 0 {
+			lastErr = fmt.Errorf("no candidates in response")
+			logger.Error("No candidates in response",
+				"attempt", attempt,
+				"maxRetries", maxRetries)
+			if attempt < maxRetries {
+				continue
+			}
+			return nil, lastErr
+		}
+
+		candidate := resp.Candidates[0]
+		if candidate.Content == nil || len(candidate.Content.Parts) == 0 {
+			lastErr = fmt.Errorf("no parts in candidate content")
+			logger.Error("No parts in candidate content",
+				"attempt", attempt,
+				"maxRetries", maxRetries)
+			if attempt < maxRetries {
+				continue
+			}
+			return nil, lastErr
+		}
+
+		// Extract image data
+		var imageData *genai.Blob
+		for _, part := range candidate.Content.Parts {
+			if part.InlineData != nil {
+				imageData = part.InlineData
+				break
+			}
+		}
+
+		if imageData == nil {
+			lastErr = fmt.Errorf("no image data found in response")
+			logger.Error("No image data found in response",
+				"attempt", attempt,
+				"maxRetries", maxRetries)
+			if attempt < maxRetries {
+				continue
+			}
+			return nil, lastErr
+		}
+
+		logger.Info("Image generation successful",
+			"mime_type", imageData.MIMEType,
+			"finish_reason", candidate.FinishReason,
+			"data_length", len(imageData.Data),
+			"attempt", attempt)
+
+		return &GenerateImageResponse{
+			ImageData:    string(imageData.Data),
+			MimeType:     imageData.MIMEType,
+			FinishReason: string(candidate.FinishReason),
+		}, nil
 	}
 
-	if imageData == nil {
-		logger.Error("No image data found in response")
-		return nil, fmt.Errorf("no image data found in response")
-	}
-
-	logger.Info("Image generation successful",
-		"mime_type", imageData.MIMEType,
-		"finish_reason", candidate.FinishReason,
-		"data_length", len(imageData.Data))
-
-	return &GenerateImageResponse{
-		ImageData:    string(imageData.Data),
-		MimeType:     imageData.MIMEType,
-		FinishReason: string(candidate.FinishReason),
-	}, nil
+	return nil, fmt.Errorf("failed to generate image after %d attempts: %w", maxRetries, lastErr)
 }
