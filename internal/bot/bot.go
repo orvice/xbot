@@ -649,26 +649,13 @@ func huahuaHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	}
 
 	// Extract image data from response
-	imageData := resp.ImageData
+	// Gemini returns raw bytes as string, convert directly to []byte
+	imgData := []byte(resp.ImageData)
 
-	// Parse and decode the image data
-	imgData, err := parseImageData(ctx, imageData)
-	if err != nil {
-		logger.Error("Failed to parse image data", "error", err)
-
-		if loadingMsg != nil {
-			// Update the loading message with the error
-			_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
-				ChatID:    update.Message.Chat.ID,
-				MessageID: loadingMsg.ID,
-				Text:      "Error decoding image data. Please try again.",
-			})
-			if err != nil {
-				logger.Error("Failed to edit message", "error", err)
-			}
-		}
-		return
-	}
+	logger.Info("Received image data from Gemini",
+		"mime_type", resp.MimeType,
+		"finish_reason", resp.FinishReason,
+		"data_length", len(imgData))
 
 	bf := bytes.NewReader(imgData)
 
