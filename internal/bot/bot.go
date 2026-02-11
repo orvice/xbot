@@ -50,6 +50,7 @@ func Init() error {
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/getid", bot.MatchTypeExact, getIDHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/me", bot.MatchTypeExact, meHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/hualao", bot.MatchTypeExact, hualaoHandler)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/poster", bot.MatchTypeExact, posterHandler)
 
 	for _, config := range pollConfig {
 		b.RegisterHandler(bot.HandlerTypeMessageText, config.Command, bot.MatchTypePrefix, newPollHandler(config))
@@ -1043,4 +1044,183 @@ func hualaoHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 			"error", err)
 		return
 	}
+}
+
+func posterHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	logger := log.FromContext(ctx).With("handler", "posterHandler")
+	logger.Info("posterHandler",
+		"chat_id", update.Message.Chat.ID,
+	)
+
+	// Send initial loading message
+	loadingMsg, err := b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: update.Message.Chat.ID,
+		Text:   "正在分析最近7天的聊天记录并生成海报...",
+	})
+	if err != nil {
+		logger.Error("Failed to send loading message", "error", err)
+		return
+	}
+
+	// Get messages from the last 7 days
+	messages, err := dao.GetMessageStorage().GetMessageByChatID(ctx, update.Message.Chat.ID)
+	if err != nil {
+		logger.Error("Failed to get messages", "error", err)
+		b.EditMessageText(ctx, &bot.EditMessageTextParams{
+			ChatID:    update.Message.Chat.ID,
+			MessageID: loadingMsg.ID,
+			Text:      "错误：无法获取聊天记录。",
+		})
+		return
+	}
+
+	if len(messages) == 0 {
+		b.EditMessageText(ctx, &bot.EditMessageTextParams{
+			ChatID:    update.Message.Chat.ID,
+			MessageID: loadingMsg.ID,
+			Text:      "最近7天没有找到聊天记录。",
+		})
+		return
+	}
+
+	// Update loading message
+	b.EditMessageText(ctx, &bot.EditMessageTextParams{
+		ChatID:    update.Message.Chat.ID,
+		MessageID: loadingMsg.ID,
+		Text:      fmt.Sprintf("已获取 %d 条消息，正在生成海报文案...", len(messages)),
+	})
+
+	// Build a conversation history from the messages
+	conversationText := prepareChatHistory(messages, 100, "这是最近7天的Telegram聊天记录：\n\n")
+
+	// Create a prompt to generate poster content
+	posterPrompt := `你是一个创意海报文案生成助手。请根据提供的聊天记录，生成一段简短、有趣、富有创意的海报文案（50字以内）。
+要求：
+1. 抓住聊天中最有趣、最热门的话题
+2. 文案要生动活泼，适合做成视觉海报
+3. 可以使用emoji表情
+4. 突出群组的活跃氛围和特色
+
+只返回海报文案内容，不要有其他说明。`
+
+	// Use models defined in config with fallback
+	modelsConfig := conf.Conf.SummaryModels
+	if len(modelsConfig) == 0 {
+		modelsConfig = []string{conf.Conf.OpenAI.Model}
+	}
+
+	// Generate poster text using AI
+	posterText, usedModel, err := openai.ChatCompletionWithModels(ctx, modelsConfig, posterPrompt, conversationText)
+	if err != nil {
+		logger.Error("Failed to generate poster text", "error", err)
+		b.EditMessageText(ctx, &bot.EditMessageTextParams{
+			ChatID:    update.Message.Chat.ID,
+			MessageID: loadingMsg.ID,
+			Text:      "错误：生成海报文案失败。",
+		})
+		return
+	}
+
+	logger.Info("Generated poster text",
+		"model", usedModel,
+		"text_length", len(posterText),
+	)
+
+	// Update loading message
+	b.EditMessageText(ctx, &bot.EditMessageTextParams{
+		ChatID:    update.Message.Chat.ID,
+		MessageID: loadingMsg.ID,
+		Text:      "海报文案已生成，正在生成图片...",
+	})
+
+	// Generate image prompt
+	imagePrompt := fmt.Sprintf(`Create a beautiful and modern poster design with the following text: "%s"
+
+Requirements:
+- Modern and clean design style
+- Vibrant colors suitable for social media
+- Clear and readable typography
+- Include decorative elements that match the theme
+- The text should be the focal point
+- Add subtle background patterns or gradients
+- Professional and eye-catching layout`, posterText)
+
+	// Generate the poster image
+	imageData, err := openai.GenImage(ctx, imagePrompt)
+	if err != nil {
+		logger.Error("GenImage error", "error", err)
+		b.EditMessageText(ctx, &bot.EditMessageTextParams{
+			ChatID:    update.Message.Chat.ID,
+			MessageID: loadingMsg.ID,
+			Text:      "错误：生成海报图片失败。",
+		})
+		return
+	}
+
+	// Extract the base64 data from the imageData string
+	parts := strings.Split(imageData, ",")
+	if len(parts) != 2 {
+		logger.Error("Invalid image data format")
+		b.EditMessageText(ctx, &bot.EditMessageTextParams{
+			ChatID:    update.Message.Chat.ID,
+			MessageID: loadingMsg.ID,
+			Text:      "错误：图片数据格式无效。",
+		})
+		return
+	}
+
+	// Decode the base64 data
+	imgData, err := base64.StdEncoding.DecodeString(parts[1])
+	if err != nil {
+		logger.Error("Base64 decode error", "error", err)
+		b.EditMessageText(ctx, &bot.EditMessageTextParams{
+			ChatID:    update.Message.Chat.ID,
+			MessageID: loadingMsg.ID,
+			Text:      "错误：解码图片数据失败。",
+		})
+		return
+	}
+
+	bf := bytes.NewReader(imgData)
+
+	// Delete the loading message before sending the photo
+	_, err = b.DeleteMessage(ctx, &bot.DeleteMessageParams{
+		ChatID:    update.Message.Chat.ID,
+		MessageID: loadingMsg.ID,
+	})
+	if err != nil {
+		logger.Error("Failed to delete loading message", "error", err)
+	}
+
+	// Prepare caption with statistics
+	caption := fmt.Sprintf("📊 最近7天聊天统计\n📝 消息数: %d\n\n%s", len(messages), posterText)
+
+	params := &bot.SendPhotoParams{
+		ChatID: update.Message.Chat.ID,
+		Photo: &models.InputFileUpload{
+			Filename: "chat_poster.png",
+			Data:     bf,
+		},
+		Caption: caption,
+		ReplyParameters: &models.ReplyParameters{
+			ChatID:                   update.Message.Chat.ID,
+			MessageID:                update.Message.ID,
+			AllowSendingWithoutReply: true,
+		},
+	}
+
+	// Send the poster image
+	_, err = b.SendPhoto(ctx, params)
+	if err != nil {
+		logger.Error("SendPhoto error", "error", err)
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   "错误：发送海报失败。",
+		})
+		return
+	}
+
+	logger.Info("Poster generated and sent successfully",
+		"messages_count", len(messages),
+	)
 }
