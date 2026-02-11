@@ -121,7 +121,7 @@ func ChatCompletion(ctx context.Context, model string, promptString, req string)
 }
 
 func GenImage(ctx context.Context, promptString string) (string, error) {
-	logger := log.FromContext(ctx)
+	logger := log.FromContext(ctx).With("method", "GenImage")
 	reqBase64 := openai.ImageRequest{
 		Prompt:         promptString,
 		ResponseFormat: openai.CreateImageResponseFormatB64JSON,
@@ -131,13 +131,28 @@ func GenImage(ctx context.Context, promptString string) (string, error) {
 		// Quality:        openai.CreateImageQualityHD,
 		// Style: openai.CreateImageStyleNatural,
 	}
-	resp, err := pictureClient.CreateImage(ctx, reqBase64)
-	if err != nil {
-		logger.Error("CreateImage error ",
-			"error", err)
-		return "", err
+
+	const maxRetries = 3
+	var lastErr error
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		resp, err := pictureClient.CreateImage(ctx, reqBase64)
+		if err != nil {
+			lastErr = err
+			logger.Error("CreateImage error",
+				"error", err,
+				"attempt", attempt,
+				"maxRetries", maxRetries)
+			if attempt < maxRetries {
+				continue
+			}
+			return "", lastErr
+		}
+		logger.Info("CreateImage success",
+			"data.url.len", len(resp.Data[0].URL),
+			"attempt", attempt)
+		return resp.Data[0].B64JSON, nil
 	}
-	logger.Info("CreateImage success",
-		"data.url.len", len(resp.Data[0].URL))
-	return resp.Data[0].B64JSON, nil
+
+	return "", lastErr
 }
