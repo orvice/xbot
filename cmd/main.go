@@ -9,6 +9,7 @@ import (
 	"go.orx.me/xbot/internal/conf"
 	"go.orx.me/xbot/internal/dao"
 	"go.orx.me/xbot/internal/http"
+	"go.orx.me/xbot/internal/pkg/gemini"
 	"go.orx.me/xbot/internal/pkg/openai"
 
 	// mysql driver
@@ -27,6 +28,7 @@ func NewApp() *app.App {
 			},
 			openai.Init,
 			bot.Init,
+			gemini.Init,
 		},
 	})
 	return app

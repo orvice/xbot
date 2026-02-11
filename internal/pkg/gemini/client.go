@@ -16,7 +16,11 @@ var (
 	client *Client
 )
 
-func Init(ctx context.Context) error {
+func GetClient() *Client {
+	return client
+}
+
+func Init() error {
 	client = NewClient(conf.Conf.PictureVendor.Key, conf.Conf.PictureVendor.Endpoint)
 	return nil
 }

@@ -18,6 +18,7 @@ import (
 	"go.orx.me/xbot/internal/conf"
 	"go.orx.me/xbot/internal/dao"
 	"go.orx.me/xbot/internal/metrics"
+	"go.orx.me/xbot/internal/pkg/gemini"
 	"go.orx.me/xbot/internal/pkg/openai"
 )
 
@@ -622,9 +623,15 @@ func huahuaHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		logger.Error("Failed to send loading message", "error", err)
 	}
 
-	imageData, err := openai.GenImage(ctx, message)
-	if nil != err {
-		logger.Error("GenImage error ",
+	// Use Gemini to generate image
+	resp, err := gemini.GetClient().GenerateImage(ctx, gemini.GenerateImageRequest{
+		Prompt:      message,
+		Temperature: 0.7,
+		TopK:        40,
+		TopP:        0.95,
+	})
+	if err != nil {
+		logger.Error("GenerateImage error",
 			"error", err)
 
 		if loadingMsg != nil {
@@ -640,6 +647,9 @@ func huahuaHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		}
 		return
 	}
+
+	// Extract image data from response
+	imageData := resp.ImageData
 
 	// Parse and decode the image data
 	imgData, err := parseImageData(ctx, imageData)
