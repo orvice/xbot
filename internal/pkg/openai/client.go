@@ -122,24 +122,26 @@ func ChatCompletion(ctx context.Context, model string, promptString, req string)
 
 func GenImage(ctx context.Context, promptString string) (string, error) {
 	logger := log.FromContext(ctx).With("method", "GenImage")
-	reqBase64 := openai.ImageRequest{
-		Prompt:         promptString,
-		ResponseFormat: openai.CreateImageResponseFormatB64JSON,
-		N:              1,
-		Model:          conf.Conf.PictureVendor.Model,
-		// Size:           openai.CreateImageSize1792x1024,
-		// Quality:        openai.CreateImageQualityHD,
-		// Style: openai.CreateImageStyleNatural,
-	}
 
 	const maxRetries = 3
 	var lastErr error
 
 	for attempt := 1; attempt <= maxRetries; attempt++ {
-		resp, err := pictureClient.CreateImage(ctx, reqBase64)
+		resp, err := pictureClient.CreateChatCompletion(
+			ctx,
+			openai.ChatCompletionRequest{
+				Model: conf.Conf.PictureVendor.Model,
+				Messages: []openai.ChatCompletionMessage{
+					{
+						Role:    openai.ChatMessageRoleUser,
+						Content: promptString,
+					},
+				},
+			},
+		)
 		if err != nil {
 			lastErr = err
-			logger.Error("CreateImage error",
+			logger.Error("CreateChatCompletion error",
 				"error", err,
 				"attempt", attempt,
 				"maxRetries", maxRetries)
@@ -148,10 +150,19 @@ func GenImage(ctx context.Context, promptString string) (string, error) {
 			}
 			return "", lastErr
 		}
-		logger.Info("CreateImage success",
-			"data.url.len", len(resp.Data[0].URL),
+		if len(resp.Choices) == 0 {
+			logger.Error("CreateChatCompletion returned no choices",
+				"attempt", attempt)
+			lastErr = err
+			if attempt < maxRetries {
+				continue
+			}
+			return "", lastErr
+		}
+		logger.Info("CreateChatCompletion success",
+			"responseLength", len(resp.Choices[0].Message.Content),
 			"attempt", attempt)
-		return resp.Data[0].B64JSON, nil
+		return resp.Choices[0].Message.Content, nil
 	}
 
 	return "", lastErr
