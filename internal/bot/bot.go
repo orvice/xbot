@@ -413,29 +413,72 @@ func parseImageData(ctx context.Context, imageData string) ([]byte, error) {
 	logger.Info("Received image data",
 		"length", len(imageData),
 		"prefix", func() string {
-			if len(imageData) > 100 {
-				return imageData[:100]
+			if len(imageData) > 200 {
+				return imageData[:200]
 			}
 			return imageData
+		}(),
+		"suffix", func() string {
+			if len(imageData) > 200 {
+				return imageData[len(imageData)-200:]
+			}
+			return ""
 		}())
 
 	var base64Data string
+	imageData = strings.TrimSpace(imageData)
 	
-	// Format 1: data:image/jpeg;base64,<actual-base64-data>
-	if strings.Contains(imageData, ",") {
-		parts := strings.Split(imageData, ",")
-		if len(parts) == 2 {
-			base64Data = parts[1]
-			logger.Info("Parsed image data as data URI format")
-		} else {
-			logger.Warn("Invalid data URI format, trying as pure base64", "parts_count", len(parts))
+	// Format 1: Markdown code block ```...```
+	if strings.Contains(imageData, "```") {
+		// Extract content between code fences
+		start := strings.Index(imageData, "```")
+		if start != -1 {
+			start += 3
+			// Skip language identifier if present
+			if newlineIdx := strings.Index(imageData[start:], "\n"); newlineIdx != -1 {
+				start += newlineIdx + 1
+			}
+			end := strings.Index(imageData[start:], "```")
+			if end != -1 {
+				base64Data = strings.TrimSpace(imageData[start : start+end])
+				logger.Info("Extracted base64 from markdown code block")
+			}
 		}
 	}
 	
-	// Format 2: Pure base64 string (no prefix)
+	// Format 2: data:image/jpeg;base64,<actual-base64-data>
+	if base64Data == "" && strings.Contains(imageData, ",") {
+		parts := strings.SplitN(imageData, ",", 2)
+		if len(parts) == 2 && strings.Contains(parts[0], "base64") {
+			base64Data = parts[1]
+			logger.Info("Parsed image data as data URI format")
+		}
+	}
+	
+	// Format 3: JSON format {"image": "base64..."} or similar
+	if base64Data == "" && (strings.HasPrefix(imageData, "{") || strings.Contains(imageData, `"image"`)) {
+		// Try to find base64 data in JSON
+		// Look for common patterns like "image": "data..." or just large base64 strings
+		if idx := strings.Index(imageData, `"data:image`); idx != -1 {
+			// Find the closing quote
+			start := idx + 1
+			if end := strings.Index(imageData[start:], `"`); end != -1 {
+				dataURI := imageData[start : start+end]
+				if strings.Contains(dataURI, ",") {
+					parts := strings.SplitN(dataURI, ",", 2)
+					if len(parts) == 2 {
+						base64Data = parts[1]
+						logger.Info("Extracted base64 from JSON data URI")
+					}
+				}
+			}
+		}
+	}
+	
+	// Format 4: Pure base64 string (no prefix)
+	// Check if it looks like base64 (only contains base64 characters)
 	if base64Data == "" {
-		// Try to use the entire string as base64
-		base64Data = strings.TrimSpace(imageData)
+		base64Data = imageData
 		logger.Info("Treating image data as pure base64 string")
 	}
 
@@ -443,10 +486,53 @@ func parseImageData(ctx context.Context, imageData string) ([]byte, error) {
 		return nil, fmt.Errorf("could not extract base64 data from image response")
 	}
 
+	// Clean up the base64 data (remove whitespace, newlines)
+	base64Data = strings.ReplaceAll(base64Data, "\n", "")
+	base64Data = strings.ReplaceAll(base64Data, "\r", "")
+	base64Data = strings.ReplaceAll(base64Data, " ", "")
+	base64Data = strings.TrimSpace(base64Data)
+
+	logger.Info("Attempting to decode base64", "cleaned_length", len(base64Data))
+
 	// Decode the base64 data
 	imgData, err := base64.StdEncoding.DecodeString(base64Data)
 	if err != nil {
-		logger.Error("Base64 decode error", "error", err)
+		// Save the problematic data to a file for debugging
+		debugFile := fmt.Sprintf("/tmp/xbot_image_debug_%d.txt", time.Now().Unix())
+		if writeErr := os.WriteFile(debugFile, []byte(imageData), 0644); writeErr == nil {
+			logger.Error("Base64 decode error - saved original data to file", 
+				"error", err,
+				"debug_file", debugFile,
+				"original_length", len(imageData),
+				"cleaned_length", len(base64Data),
+				"data_sample_start", func() string {
+					if len(base64Data) > 100 {
+						return base64Data[:100]
+					}
+					return base64Data
+				}(),
+				"data_sample_end", func() string {
+					if len(base64Data) > 100 {
+						return base64Data[len(base64Data)-100:]
+					}
+					return ""
+				}())
+		} else {
+			logger.Error("Base64 decode error", 
+				"error", err,
+				"data_sample_start", func() string {
+					if len(base64Data) > 100 {
+						return base64Data[:100]
+					}
+					return base64Data
+				}(),
+				"data_sample_end", func() string {
+					if len(base64Data) > 100 {
+						return base64Data[len(base64Data)-100:]
+					}
+					return ""
+				}())
+		}
 		return nil, fmt.Errorf("failed to decode base64 data: %w", err)
 	}
 

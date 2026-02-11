@@ -159,10 +159,23 @@ func GenImage(ctx context.Context, promptString string) (string, error) {
 			}
 			return "", lastErr
 		}
+		content := resp.Choices[0].Message.Content
 		logger.Info("CreateChatCompletion success",
-			"responseLength", len(resp.Choices[0].Message.Content),
-			"attempt", attempt)
-		return resp.Choices[0].Message.Content, nil
+			"responseLength", len(content),
+			"attempt", attempt,
+			"contentPrefix", func() string {
+				if len(content) > 200 {
+					return content[:200]
+				}
+				return content
+			}(),
+			"contentSuffix", func() string {
+				if len(content) > 200 {
+					return content[len(content)-200:]
+				}
+				return ""
+			}())
+		return content, nil
 	}
 
 	return "", lastErr
