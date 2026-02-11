@@ -405,6 +405,55 @@ func savePromt(ctx context.Context, b *bot.Bot, update *models.Update) {
 	}
 }
 
+// parseImageData extracts base64 data from various image data formats
+func parseImageData(ctx context.Context, imageData string) ([]byte, error) {
+	logger := log.FromContext(ctx).With("method", "parseImageData")
+	
+	// Log the actual image data format for debugging
+	logger.Info("Received image data",
+		"length", len(imageData),
+		"prefix", func() string {
+			if len(imageData) > 100 {
+				return imageData[:100]
+			}
+			return imageData
+		}())
+
+	var base64Data string
+	
+	// Format 1: data:image/jpeg;base64,<actual-base64-data>
+	if strings.Contains(imageData, ",") {
+		parts := strings.Split(imageData, ",")
+		if len(parts) == 2 {
+			base64Data = parts[1]
+			logger.Info("Parsed image data as data URI format")
+		} else {
+			logger.Warn("Invalid data URI format, trying as pure base64", "parts_count", len(parts))
+		}
+	}
+	
+	// Format 2: Pure base64 string (no prefix)
+	if base64Data == "" {
+		// Try to use the entire string as base64
+		base64Data = strings.TrimSpace(imageData)
+		logger.Info("Treating image data as pure base64 string")
+	}
+
+	if base64Data == "" {
+		return nil, fmt.Errorf("could not extract base64 data from image response")
+	}
+
+	// Decode the base64 data
+	imgData, err := base64.StdEncoding.DecodeString(base64Data)
+	if err != nil {
+		logger.Error("Base64 decode error", "error", err)
+		return nil, fmt.Errorf("failed to decode base64 data: %w", err)
+	}
+
+	logger.Info("Successfully decoded image data", "size_bytes", len(imgData))
+	return imgData, nil
+}
+
 func huahuaHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	logger := log.FromContext(ctx)
 	logger.Info("huahuaHandler",
@@ -449,30 +498,10 @@ func huahuaHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		return
 	}
 
-	// Extract the base64 data from the imageData string
-	// Format is: data:image/jpeg;base64,<actual-base64-data>
-	parts := strings.Split(imageData, ",")
-	if len(parts) != 2 {
-		logger.Error("Invalid image data format")
-
-		if loadingMsg != nil {
-			// Update the loading message with the error
-			_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
-				ChatID:    update.Message.Chat.ID,
-				MessageID: loadingMsg.ID,
-				Text:      "Error processing image data. Please try again.",
-			})
-			if err != nil {
-				logger.Error("Failed to edit message", "error", err)
-			}
-		}
-		return
-	}
-
-	// Decode the base64 data
-	imgData, err := base64.StdEncoding.DecodeString(parts[1])
+	// Parse and decode the image data
+	imgData, err := parseImageData(ctx, imageData)
 	if err != nil {
-		logger.Error("Base64 decode error", "error", err)
+		logger.Error("Failed to parse image data", "error", err)
 
 		if loadingMsg != nil {
 			// Update the loading message with the error
@@ -1157,26 +1186,14 @@ Requirements:
 		return
 	}
 
-	// Extract the base64 data from the imageData string
-	parts := strings.Split(imageData, ",")
-	if len(parts) != 2 {
-		logger.Error("Invalid image data format")
+	// Parse and decode the image data
+	imgData, err := parseImageData(ctx, imageData)
+	if err != nil {
+		logger.Error("Failed to parse image data", "error", err)
 		b.EditMessageText(ctx, &bot.EditMessageTextParams{
 			ChatID:    update.Message.Chat.ID,
 			MessageID: loadingMsg.ID,
 			Text:      "错误：图片数据格式无效。",
-		})
-		return
-	}
-
-	// Decode the base64 data
-	imgData, err := base64.StdEncoding.DecodeString(parts[1])
-	if err != nil {
-		logger.Error("Base64 decode error", "error", err)
-		b.EditMessageText(ctx, &bot.EditMessageTextParams{
-			ChatID:    update.Message.Chat.ID,
-			MessageID: loadingMsg.ID,
-			Text:      "错误：解码图片数据失败。",
 		})
 		return
 	}
