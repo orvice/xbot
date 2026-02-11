@@ -19,13 +19,6 @@ func GetClient() *Client {
 
 func Init() error {
 	ctx := context.Background()
-	sdkClient, err := genai.NewClient(ctx, &genai.ClientConfig{
-		APIKey:  conf.Conf.PictureVendor.Key,
-		Backend: genai.BackendVertexAI,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create Gemini client: %w", err)
-	}
 
 	// If a custom endpoint is configured, set it
 	if conf.Conf.PictureVendor.Endpoint != "" {
@@ -33,6 +26,14 @@ func Init() error {
 			GeminiURL: conf.Conf.PictureVendor.Endpoint,
 			VertexURL: conf.Conf.PictureVendor.Endpoint,
 		})
+	}
+
+	sdkClient, err := genai.NewClient(ctx, &genai.ClientConfig{
+		APIKey:  conf.Conf.PictureVendor.Key,
+		Backend: genai.BackendGeminiAPI,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create Gemini client: %w", err)
 	}
 
 	client = &Client{
